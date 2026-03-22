@@ -1,0 +1,65 @@
+/* MUN Central Asia — Conference Modal */
+/* ── OVERLAY BASE ── */
+.overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem;opacity:0;pointer-events:none;transition:opacity .3s;}
+[data-theme="dark"] .overlay{background:rgba(7,10,18,.88);backdrop-filter:blur(8px);}
+[data-theme="light"] .overlay{background:rgba(44,31,14,.45);backdrop-filter:blur(8px);}
+.overlay.open{opacity:1;pointer-events:all;}
+
+/* ── CONFERENCE MODAL ── */
+.modal{background:var(--surface);border:1px solid var(--border);width:100%;max-width:840px;position:relative;box-shadow:var(--shadow);transform:translateY(28px);transition:transform .35s cubic-bezier(.16,1,.3,1);}
+.overlay.open .modal{transform:translateY(0);}
+.modal-close{position:absolute;top:1.2rem;right:1.4rem;background:transparent;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;transition:color .2s,transform .2s;z-index:10;}
+.modal-close:hover{color:var(--text);transform:rotate(90deg);}
+.modal-hero{padding:2.5rem 2.5rem 2rem;border-bottom:1px solid var(--border);background:var(--surface2);}
+.modal-country{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;margin-bottom:.8rem;}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;line-height:1.1;margin-bottom:.4rem;}
+.modal-subtitle{font-size:.82rem;color:var(--muted);margin-bottom:1.4rem;}
+.modal-tags{display:flex;gap:.6rem;flex-wrap:wrap;}
+.tag{font-size:.7rem;letter-spacing:.05em;padding:3px 11px;border:1px solid var(--border);color:var(--muted);border-radius:2px;}
+.tag-hl{border-color:rgba(201,168,76,.35);color:var(--accent2);}
+.modal-body{padding:2rem 2.5rem;}
+.modal-section{margin-bottom:2.4rem;}
+.sec-title{font-family:'DM Mono',monospace;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:1.1rem;display:flex;align-items:center;gap:.6rem;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;}
+.info-val{font-size:.87rem;font-weight:500;}
+.info-key{font-size:.62rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-top:3px;}
+.rating-display{display:flex;align-items:center;gap:1.2rem;padding:1.1rem 1.4rem;background:rgba(201,168,76,.05);border:1px solid rgba(201,168,76,.18);margin-bottom:.5rem;}
+.big-rating{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:700;color:var(--accent);line-height:1;}
+.big-stars{font-size:1rem;color:var(--accent);letter-spacing:3px;}
+.rating-count{font-size:.72rem;color:var(--muted);margin-top:2px;}
+.committee-list{display:flex;flex-direction:column;gap:.7rem;}
+.committee-row{display:grid;grid-template-columns:100px 1fr auto;align-items:center;gap:1rem;padding:.85rem 1.1rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);transition:transform .2s;}
+.committee-row:hover{transform:translateX(3px);}
+.comm-abbr{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--accent2);font-weight:500;}
+.comm-topic{font-size:.8rem;line-height:1.3;}
+.comm-level{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:2px;white-space:nowrap;}
+.level-beg{background:rgba(92,184,138,.1); color:var(--green);border:1px solid rgba(92,184,138,.25);}
+.level-int{background:rgba(92,143,224,.1); color:var(--blue); border:1px solid rgba(92,143,224,.25);}
+.level-adv{background:rgba(224,92,92,.1);  color:var(--red);  border:1px solid rgba(224,92,92,.25);}
+.chairs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.9rem;}
+.chair-card{padding:.95rem 1.1rem;background:var(--surface2);border:1px solid var(--border);display:flex;gap:.9rem;align-items:flex-start;transition:transform .2s,box-shadow .2s;}
+.chair-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.12);}
+.chair-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--border));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:.8rem;color:var(--bg);flex-shrink:0;}
+.chair-name{font-size:.83rem;font-weight:500;}
+.chair-role{font-size:.68rem;color:var(--accent);}
+.chair-uni{font-size:.67rem;color:var(--muted);}
+.fees-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);}
+.fee-item{background:var(--surface2);padding:1.1rem 1.3rem;transition:background .2s;}
+.fee-item:hover{background:var(--surface);}
+.fee-amount{font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;line-height:1;}
+.fee-type{font-size:.68rem;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-top:3px;}
+.fee-note{font-size:.68rem;color:var(--accent);margin-top:3px;}
+.deadline-list{border:1px solid var(--border);}
+.deadline-row{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1.3rem;border-bottom:1px solid var(--border);font-size:.8rem;transition:background .2s;}
+.deadline-row:hover{background:var(--surface2);}
+.deadline-row:last-child{border-bottom:none;}
+.dl-label{color:var(--muted);}
+.dl-date{font-family:'DM Mono',monospace;font-size:.77rem;}
+.dl-passed{color:var(--red);opacity:.6;text-decoration:line-through;}
+.dl-upcoming{color:var(--green);}
+.org-section{display:flex;gap:2rem;flex-wrap:wrap;}
+.org-role-block{flex:1;min-width:160px;}
+.org-role-title{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;}
+.org-name{font-size:.83rem;margin-bottom:2px;}
+.org-contact{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--accent);}
