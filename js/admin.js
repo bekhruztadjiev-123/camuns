@@ -2,35 +2,107 @@
 /* ═══════════════════════════════════════════
    ADMIN PANEL
    ═══════════════════════════════════════════ */
-var ADMIN_PW='camuns2026';
-var adminLoggedIn=false;
+/* ── SUPABASE AUTH ──
+   No password stored in code.
+   Login via Supabase email/password auth.
+   Create your admin user at:
+   supabase.com → Authentication → Users → Add user
+*/
+var adminLoggedIn = false;
+var adminSession  = null;
 var adminActiveTab='conferences';
 var editingConfId=null;
 var addStep=0;
 var addData={};
 
+/* Check if a session is already stored in sessionStorage */
+(function(){
+  try {
+    var stored = sessionStorage.getItem('mun_admin_session');
+    if (stored) {
+      adminSession  = JSON.parse(stored);
+      adminLoggedIn = true;
+    }
+  } catch(e){}
+})();
+
 function openAdmin(){
   document.getElementById('admin-overlay').classList.add('open');
   document.body.style.overflow='hidden';
-  if(!adminLoggedIn){
-    setTimeout(function(){var pw=document.getElementById('admin-pw');if(pw)pw.focus();},150);
+  if(adminLoggedIn){
+    showAdminPanel();
+  } else {
+    renderLoginForm();
+    setTimeout(function(){
+      var em=document.getElementById('admin-email');
+      if(em) em.focus();
+    },150);
   }
 }
+
 function closeAdmin(){
   document.getElementById('admin-overlay').classList.remove('open');
   document.body.style.overflow='';
 }
 
+function renderLoginForm(){
+  document.getElementById('admin-tabs-bar').style.display='none';
+  document.getElementById('admin-body').innerHTML=
+    '<div class="field-group"><label class="field-label">Email</label>'
+    +'<input class="field-input" type="email" id="admin-email" placeholder="admin@example.com" onkeydown="if(event.key===&quot;Enter&quot;)document.getElementById(&quot;admin-pw&quot;).focus()"/></div>'
+    +'<div class="field-group"><label class="field-label">Password</label>'
+    +'<input class="field-input" type="password" id="admin-pw" placeholder="Your Supabase password" onkeydown="if(event.key===&quot;Enter&quot;)checkAdmin()"/></div>'
+    +'<div class="admin-error" id="admin-error"></div>';
+  document.getElementById('admin-footer').innerHTML=
+    '<button class="btn-s" onclick="closeAdmin()">Cancel</button>'
+    +'<button class="btn-p" id="login-btn" onclick="checkAdmin()">Login</button>';
+}
+
 function checkAdmin(){
-  var pw=document.getElementById('admin-pw');
-  if(!pw)return;
-  if(pw.value===ADMIN_PW){
-    adminLoggedIn=true;
-    showAdminPanel();
-  } else {
-    document.getElementById('admin-error').classList.add('visible');
-    pw.value=''; pw.focus();
-  }
+  var emailEl = document.getElementById('admin-email');
+  var pwEl    = document.getElementById('admin-pw');
+  var errEl   = document.getElementById('admin-error');
+  var loginBtn= document.getElementById('login-btn');
+  if(!emailEl || !pwEl) return;
+  var email = emailEl.value.trim();
+  var pw    = pwEl.value;
+  if(!email || !pw){ showAdminError('Please enter your email and password.'); return; }
+
+  // Disable button + show loading
+  if(loginBtn){ loginBtn.disabled=true; loginBtn.textContent='Signing in...'; }
+  if(errEl){ errEl.classList.remove('visible'); errEl.textContent=''; }
+
+  fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    headers: {
+      'apikey':       SUPABASE_ANON,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email: email, password: pw })
+  })
+  .then(function(r){ return r.json().then(function(d){ return {status:r.status, data:d}; }); })
+  .then(function(res){
+    if(res.status === 200 && res.data.access_token){
+      adminSession  = res.data;
+      adminLoggedIn = true;
+      try { sessionStorage.setItem('mun_admin_session', JSON.stringify(res.data)); } catch(e){}
+      showAdminPanel();
+    } else {
+      var msg = res.data.error_description || res.data.msg || 'Invalid email or password.';
+      showAdminError(msg);
+      if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Login'; }
+      if(pwEl){ pwEl.value=''; pwEl.focus(); }
+    }
+  })
+  .catch(function(e){
+    showAdminError('Connection error. Please try again.');
+    if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Login'; }
+  });
+}
+
+function showAdminError(msg){
+  var errEl = document.getElementById('admin-error');
+  if(errEl){ errEl.textContent=msg; errEl.classList.add('visible'); }
 }
 
 function showAdminPanel(){
@@ -38,23 +110,23 @@ function showAdminPanel(){
   var tabsBar=document.getElementById('admin-tabs-bar');
   tabsBar.style.display='flex';
   tabsBar.innerHTML=
-    '<button class="admin-tab active" id="atab-conferences" onclick="switchAdminTab(\'conferences\')">Conferences</button>'
-    +'<button class="admin-tab" id="atab-reviews" onclick="switchAdminTab(\'reviews\')">Reviews</button>'
-    +'<button class="admin-tab" id="atab-add" onclick="switchAdminTab(\'add\')">+ Add Conference</button>';
-  document.getElementById('admin-footer').innerHTML='<button class="btn-s" onclick="adminLogout()">Log Out</button>';
+    '<button class="admin-tab active" id="atab-conferences" onclick="switchAdminTab(&quot;conferences&quot;)">Conferences</button>'
+    +'<button class="admin-tab" id="atab-reviews" onclick="switchAdminTab(&quot;reviews&quot;)">Reviews</button>'
+    +'<button class="admin-tab" id="atab-add" onclick="switchAdminTab(&quot;add&quot;)">+ Add Conference</button>';
+  var userEmail = adminSession && adminSession.user ? adminSession.user.email : 'Admin';
+  document.getElementById('admin-footer').innerHTML=
+    '<span style="font-size:.72rem;color:var(--muted);">'+userEmail+'</span>'
+    +'<button class="btn-s" onclick="adminLogout()">Log Out</button>';
   switchAdminTab('conferences');
 }
 
 function adminLogout(){
-  adminLoggedIn=false; adminActiveTab='conferences';
+  adminLoggedIn = false;
+  adminSession  = null;
+  adminActiveTab='conferences';
+  try { sessionStorage.removeItem('mun_admin_session'); } catch(e){}
   document.getElementById('admin-tabs-bar').style.display='none';
-  document.getElementById('admin-body').innerHTML=
-    '<div class="field-group"><label class="field-label">Password</label>'
-    +'<input class="field-input" type="password" id="admin-pw" placeholder="Enter admin password" onkeydown="if(event.key===\'Enter\')checkAdmin()"/></div>'
-    +'<div class="admin-error" id="admin-error">Incorrect password.</div>';
-  document.getElementById('admin-footer').innerHTML=
-    '<button class="btn-s" onclick="closeAdmin()">Cancel</button>'
-    +'<button class="btn-p" onclick="checkAdmin()">Login</button>';
+  renderLoginForm();
 }
 
 function switchAdminTab(tab){
@@ -71,22 +143,35 @@ function switchAdminTab(tab){
 
 /* ── Admin: Conferences list ── */
 function renderAdminConferences(){
-  var html='';
+  var html = '';
   if(!SB_CONFIGURED){
-    html='<div class="setup-banner"><strong>&#9888; Supabase not configured</strong>Connect your database to enable persistent storage. See the SQL setup guide below, then replace <code>YOUR_SUPABASE_URL</code> and <code>YOUR_SUPABASE_ANON_KEY</code> in the source file.<br><br><strong>SQL to create tables:</strong><br><code>create table conferences (id bigserial primary key, name text, edition text, country text, city text, dates text, status text default \'soon\', rating numeric, rating_count int default 0, delegates text, language text, website text, committees jsonb, chairs jsonb, fees jsonb, deadlines jsonb, secretariat jsonb);</code><br><br><code>create table reviews (id bigserial primary key, conference_id bigint references conferences(id), user_name text, initials text, color text, role text, rating int, comment text, archived boolean default false, tg_id bigint, created_at timestamptz default now());</code><br><br>Then enable Row Level Security and add a public select policy.</div>';
+    html += '<div class="setup-banner"><strong>&#9888; Supabase not configured</strong> Add your credentials to js/config.js to enable persistent storage.</div>';
   }
-  html+='<div class="admin-conf-list">';
-  for(var i=0;i<CONFS.length;i++){
-    var c=CONFS[i];
-    html+='<div class="admin-conf-item">'
-      +'<div><div class="acf-name">'+escHtml(c.name)+'</div><div class="acf-meta">'+escHtml(c.city)+' \u00B7 '+escHtml(c.dates||'')+' \u00B7 <span class="status-pill status-'+escHtml(c.status)+'">'+escHtml(c.status)+'</span></div></div>'
-      +'<div class="acf-actions">'
-      +'<button class="acf-btn" onclick="editConf('+c.id+')">Edit</button>'
-      +'<button class="acf-btn danger" onclick="deleteConf('+c.id+')">Delete</button>'
-      +'</div></div>';
+  if(!CONFS || CONFS.length === 0){
+    html += '<div style="padding:1.5rem;color:var(--muted);font-size:.85rem;">No conferences in database yet. Use the + Add Conference tab to create one.</div>';
+  } else {
+    html += '<div class="admin-conf-list">';
+    for(var i=0;i<CONFS.length;i++){
+      var c=CONFS[i];
+      var comCount = (c.committees||[]).length;
+      html += '<div class="admin-conf-item">'
+        +'<div>'
+        +'<div class="acf-name">'+escHtml(c.name)+'</div>'
+        +'<div class="acf-meta">'+escHtml(c.city||'')+' &middot; '+escHtml(c.dates||'')+' &middot; '
+        +'<span class="status-pill status-'+escHtml(c.status||'soon')+'">'+escHtml(c.status||'soon')+'</span>'
+        +' &middot; '+comCount+' committee'+(comCount!==1?'s':'')
+        +(c.rating ? ' &middot; &#9733; '+c.rating : '')
+        +'</div>'
+        +'</div>'
+        +'<div class="acf-actions">'
+        +'<button class="acf-btn" onclick="editConf('+c.id+')">Edit</button>'
+        +'<button class="acf-btn danger" onclick="deleteConf('+c.id+')">Delete</button>'
+        +'</div>'
+        +'</div>';
+    }
+    html += '</div>';
   }
-  html+='</div>';
-  document.getElementById('admin-body').innerHTML=html;
+  document.getElementById('admin-body').innerHTML = html;
 }
 
 function deleteConf(id){
@@ -443,30 +528,7 @@ function unarchiveReview(confId,revId){
   if(SB_CONFIGURED) sbFetch('reviews?id=eq.'+revId,{method:'PATCH',body:JSON.stringify({archived:false})}).catch(function(){});
   recalcRating(c, true); renderCards(CONFS); renderAdminReviews();
 }
-function recalcRating(c, pushToDB){
-  var active=(c.reviews||[]).filter(function(r){return !r.archived;});
-  if(active.length===0){c.rating=null;c.rating_count=0;c.ratingCount=0;}
-  else {
-    var total=0; active.forEach(function(r){total+=r.stars||r.rating||0;});
-    c.rating=Math.round((total/active.length)*10)/10;
-    c.rating_count=active.length; c.ratingCount=active.length;
-  }
-  if(pushToDB && SB_CONFIGURED){
-    fetch(SUPABASE_URL+'/rest/v1/conferences?id=eq.'+Number(c.id),{
-      method:'PATCH',
-      headers:{
-        'apikey':SUPABASE_ANON,
-        'Authorization':'Bearer '+SUPABASE_ANON,
-        'Content-Type':'application/json',
-        'Prefer':'return=representation'
-      },
-      body:JSON.stringify({
-        rating: c.rating,
-        rating_count: c.rating_count||0
-      })
-    }).catch(function(){});
-  }
-}
+/* recalcRating moved to db.js */
 
 /* ── Global keyboard ── */
 document.addEventListener('keydown',function(e){
@@ -478,4 +540,3 @@ loadConferences();
 
 /* ── Init ── */
 loadConferences();
-
