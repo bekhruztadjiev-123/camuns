@@ -1,0 +1,62 @@
+/* MUN Central Asia — Reviews */
+/* ── REVIEWS ── */
+.reviews-section{border-top:1px solid var(--border);padding:2rem 2.5rem 2.5rem;}
+.auth-block{display:flex;align-items:center;gap:1rem;padding:1.1rem 1.4rem;border:1px solid var(--border);background:var(--surface2);margin-bottom:1.5rem;}
+.auth-block.hidden{display:none;}
+.tg-icon{font-size:1.5rem;}
+.tg-text strong{font-size:.85rem;display:block;margin-bottom:2px;}
+.tg-text span{font-size:.75rem;color:var(--muted);}
+.user-bar{display:none;align-items:center;gap:.8rem;padding:.7rem 1rem;background:rgba(41,182,246,.06);border:1px solid rgba(41,182,246,.18);margin-bottom:1.5rem;font-size:.8rem;animation:fadeIn .3s ease;}
+.user-bar.visible{display:flex;}
+.u-avatar{width:30px;height:30px;border-radius:50%;background:var(--tg);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff;font-weight:700;}
+.u-name{font-weight:500;}
+.u-badge{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.1em;background:rgba(41,182,246,.12);color:var(--tg);border:1px solid rgba(41,182,246,.28);padding:2px 8px;border-radius:2px;text-transform:uppercase;}
+.logout-btn{margin-left:auto;font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;transition:color .2s;}
+.logout-btn:hover{color:var(--text);}
+.review-form{display:none;border:1px solid var(--border);padding:1.4rem;background:var(--surface2);margin-bottom:1.8rem;animation:fadeIn .3s ease;}
+.review-form.visible{display:block;}
+.form-row{margin-bottom:1.1rem;}
+.form-label{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5rem;}
+.star-picker{display:flex;gap:4px;}
+.star-pick{font-size:1.5rem;cursor:pointer;color:var(--border);transition:color .15s,transform .15s;user-select:none;}
+.star-pick:hover,.star-pick.on{color:var(--accent);}
+.star-pick:hover{transform:scale(1.2);}
+.role-selector{display:flex;gap:.5rem;flex-wrap:wrap;}
+.role-opt{font-size:.72rem;letter-spacing:.06em;padding:5px 14px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s;border-radius:2px;}
+.role-opt.on{border-color:var(--accent);color:var(--accent);background:rgba(201,168,76,.08);}
+textarea.rtext{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.83rem;padding:.8rem 1rem;resize:vertical;min-height:90px;outline:none;transition:border-color .2s;}
+textarea.rtext:focus{border-color:var(--accent);}
+textarea.rtext::placeholder{color:var(--muted);}
+.submit-btn{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--bg);border:none;padding:9px 22px;cursor:pointer;transition:background .2s,transform .15s;}
+.submit-btn:hover{background:var(--accent2);transform:translateY(-1px);}
+.submit-btn:active{transform:translateY(0);}
+.reviews-count-title{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:.6rem;margin:1.6rem 0 .8rem;}
+.reviews-count-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.sort-bar{display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+.sort-label{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.sort-btn{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.07em;padding:4px 12px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s;border-radius:2px;}
+.sort-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(201,168,76,.08);}
+.rv-loading{padding:2rem;text-align:center;color:var(--muted);font-size:.82rem;}
+.rv-bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:3px;}
+.rv-bar-label{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);width:12px;text-align:right;}
+.rv-bar-track{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.rv-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .6s cubic-bezier(.16,1,.3,1);}
+.rv-bar-count{font-size:.65rem;color:var(--muted);font-family:'DM Mono',monospace;width:20px;}
+.review-list{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);}
+.review-item{background:var(--surface);padding:1.2rem 1.4rem;transition:background .2s;animation:fadeIn .3s ease;}
+.review-item:hover{background:var(--surface2);}
+.review-header{display:flex;align-items:center;gap:.8rem;margin-bottom:.5rem;}
+.rv-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0;}
+.rv-name{font-size:.83rem;font-weight:500;}
+.rv-role{font-size:.65rem;color:var(--muted);}
+.rv-stars{font-size:.75rem;color:var(--accent);letter-spacing:2px;margin-left:auto;}
+.rv-text{font-size:.82rem;color:var(--muted);line-height:1.6;}
+.rv-date{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:.5rem;opacity:.7;}
+.no-reviews{padding:2rem;text-align:center;color:var(--muted);font-size:.82rem;border:1px solid var(--border);}
+.modal-actions{padding:1.4rem 2.5rem;border-top:1px solid var(--border);display:flex;gap:.8rem;}
+.btn-p{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--bg);border:none;padding:9px 22px;cursor:pointer;transition:background .2s,transform .15s;}
+.btn-p:hover{background:var(--accent2);transform:translateY(-1px);}
+.btn-s{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--muted);border:1px solid var(--border);padding:9px 22px;cursor:pointer;transition:all .2s;}
+.btn-s:hover{border-color:var(--text);color:var(--text);transform:translateY(-1px);}
+.btn-danger{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--red);border:1px solid rgba(224,92,92,.3);padding:9px 22px;cursor:pointer;transition:all .2s;}
+.btn-danger:hover{background:rgba(224,92,92,.1);}
