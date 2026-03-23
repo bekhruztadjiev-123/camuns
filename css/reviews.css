@@ -1,8 +1,8 @@
 /* MUN Central Asia — Reviews */
 /* ── REVIEWS ── */
 .reviews-section{border-top:1px solid var(--border);padding:2rem 2.5rem 2.5rem;}
-.tg-auth-block{display:flex;align-items:center;gap:1rem;padding:1.1rem 1.4rem;border:1px solid var(--border);background:var(--surface2);margin-bottom:1.5rem;}
-.tg-auth-block.hidden{display:none;}
+.auth-block{display:flex;align-items:center;gap:1rem;padding:1.1rem 1.4rem;border:1px solid var(--border);background:var(--surface2);margin-bottom:1.5rem;}
+.auth-block.hidden{display:none;}
 .tg-icon{font-size:1.5rem;}
 .tg-text strong{font-size:.85rem;display:block;margin-bottom:2px;}
 .tg-text span{font-size:.75rem;color:var(--muted);}

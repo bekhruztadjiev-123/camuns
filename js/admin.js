@@ -3,106 +3,31 @@
    ADMIN PANEL
    ═══════════════════════════════════════════ */
 /* ── SUPABASE AUTH ──
-   No password stored in code.
-   Login via Supabase email/password auth.
-   Create your admin user at:
-   supabase.com → Authentication → Users → Add user
+   Auth is handled by `js/auth.js` (shared login for organizer/delegate/admin).
+   This file is responsible only for the admin panel behavior.
 */
-var adminLoggedIn = false;
-var adminSession  = null;
 var adminActiveTab='conferences';
 var editingConfId=null;
 var addStep=0;
 var addData={};
 
-/* Check if a session is already stored in sessionStorage */
-(function(){
-  try {
-    var stored = sessionStorage.getItem('mun_admin_session');
-    if (stored) {
-      adminSession  = JSON.parse(stored);
-      adminLoggedIn = true;
-    }
-  } catch(e){}
-})();
-
 function openAdmin(){
-  document.getElementById('admin-overlay').classList.add('open');
-  document.body.style.overflow='hidden';
-  if(adminLoggedIn){
+  var role = window.__authState && window.__authState.role ? window.__authState.role : null;
+  if(role === 'admin'){
+    document.getElementById('admin-overlay').classList.add('open');
+    document.body.style.overflow='hidden';
     showAdminPanel();
-  } else {
-    renderLoginForm();
-    setTimeout(function(){
-      var em=document.getElementById('admin-email');
-      if(em) em.focus();
-    },150);
+    return;
+  }
+  // Ask `auth.js` to log in as admin.
+  if(typeof window.openAuth === 'function'){
+    window.openAuth('admin', { postLoginContext: 'admin-panel', googleOnly: true });
   }
 }
 
 function closeAdmin(){
   document.getElementById('admin-overlay').classList.remove('open');
   document.body.style.overflow='';
-}
-
-function renderLoginForm(){
-  document.getElementById('admin-tabs-bar').style.display='none';
-  document.getElementById('admin-body').innerHTML=
-    '<div class="field-group"><label class="field-label">Email</label>'
-    +'<input class="field-input" type="email" id="admin-email" placeholder="admin@example.com" onkeydown="if(event.key===&quot;Enter&quot;)document.getElementById(&quot;admin-pw&quot;).focus()"/></div>'
-    +'<div class="field-group"><label class="field-label">Password</label>'
-    +'<input class="field-input" type="password" id="admin-pw" placeholder="Your Supabase password" onkeydown="if(event.key===&quot;Enter&quot;)checkAdmin()"/></div>'
-    +'<div class="admin-error" id="admin-error"></div>';
-  document.getElementById('admin-footer').innerHTML=
-    '<button class="btn-s" onclick="closeAdmin()">Cancel</button>'
-    +'<button class="btn-p" id="login-btn" onclick="checkAdmin()">Login</button>';
-}
-
-function checkAdmin(){
-  var emailEl = document.getElementById('admin-email');
-  var pwEl    = document.getElementById('admin-pw');
-  var errEl   = document.getElementById('admin-error');
-  var loginBtn= document.getElementById('login-btn');
-  if(!emailEl || !pwEl) return;
-  var email = emailEl.value.trim();
-  var pw    = pwEl.value;
-  if(!email || !pw){ showAdminError('Please enter your email and password.'); return; }
-
-  // Disable button + show loading
-  if(loginBtn){ loginBtn.disabled=true; loginBtn.textContent='Signing in...'; }
-  if(errEl){ errEl.classList.remove('visible'); errEl.textContent=''; }
-
-  fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    headers: {
-      'apikey':       SUPABASE_ANON,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ email: email, password: pw })
-  })
-  .then(function(r){ return r.json().then(function(d){ return {status:r.status, data:d}; }); })
-  .then(function(res){
-    if(res.status === 200 && res.data.access_token){
-      adminSession  = res.data;
-      adminLoggedIn = true;
-      try { sessionStorage.setItem('mun_admin_session', JSON.stringify(res.data)); } catch(e){}
-      showAdminPanel();
-    } else {
-      var msg = res.data.error_description || res.data.msg || 'Invalid email or password.';
-      showAdminError(msg);
-      if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Login'; }
-      if(pwEl){ pwEl.value=''; pwEl.focus(); }
-    }
-  })
-  .catch(function(e){
-    showAdminError('Connection error. Please try again.');
-    if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Login'; }
-  });
-}
-
-function showAdminError(msg){
-  var errEl = document.getElementById('admin-error');
-  if(errEl){ errEl.textContent=msg; errEl.classList.add('visible'); }
 }
 
 function showAdminPanel(){
@@ -113,7 +38,16 @@ function showAdminPanel(){
     '<button class="admin-tab active" id="atab-conferences" onclick="switchAdminTab(&quot;conferences&quot;)">Conferences</button>'
     +'<button class="admin-tab" id="atab-reviews" onclick="switchAdminTab(&quot;reviews&quot;)">Reviews</button>'
     +'<button class="admin-tab" id="atab-add" onclick="switchAdminTab(&quot;add&quot;)">+ Add Conference</button>';
-  var userEmail = adminSession && adminSession.user ? adminSession.user.email : 'Admin';
+
+  var userEmail = 'Admin';
+  try {
+    if(window.__authState && window.__authState.profile && window.__authState.profile.display_name){
+      userEmail = window.__authState.profile.display_name;
+    } else if(window.__authState && window.__authState.user && window.__authState.user.email){
+      userEmail = window.__authState.user.email;
+    }
+  } catch(e){}
+
   document.getElementById('admin-footer').innerHTML=
     '<span style="font-size:.72rem;color:var(--muted);">'+userEmail+'</span>'
     +'<button class="btn-s" onclick="adminLogout()">Log Out</button>';
@@ -121,12 +55,13 @@ function showAdminPanel(){
 }
 
 function adminLogout(){
-  adminLoggedIn = false;
-  adminSession  = null;
   adminActiveTab='conferences';
-  try { sessionStorage.removeItem('mun_admin_session'); } catch(e){}
   document.getElementById('admin-tabs-bar').style.display='none';
-  renderLoginForm();
+  if(typeof window.authSignOut === 'function'){
+    window.authSignOut().catch(function(){});
+  } else {
+    closeAdmin();
+  }
 }
 
 function switchAdminTab(tab){
@@ -495,11 +430,15 @@ function renderAdminReviews(){
       var r=revs[j];
       var stars=r.stars||r.rating||0;
       html+='<div class="admin-rv-item'+(r.archived?' archived':'')+'">'
-        +'<div class="rv-avatar" style="background:'+escHtml(r.color||'#888')+'">'+escHtml(r.initials||'?')+'</div>'
+        +'<div class="rv-avatar" style="background:'+escHtml((function(){
+          var c = r && r.color ? String(r.color) : '';
+          if(/^#[0-9a-fA-F]{6}$/.test(c) || /^#[0-9a-fA-F]{3}$/.test(c)) return c;
+          return '#888';
+        })())+'">'+escHtml(r.initials||'?')+'</div>'
         +'<div class="arv-info">'
         +'<div class="arv-head">'+escHtml(r.user||r.user_name||'')+' <span style="color:var(--muted);font-weight:300;">'+escHtml(r.role||'')+' &mdash; '+starsStr(stars)+'</span></div>'
         +'<div class="arv-sub">'+escHtml(r.date||r.created_at||'')+'</div>'
-        +'<div class="arv-text">'+escHtml(r.text||r.comment||'')+'</div>'
+        +'<div class="arv-text">'+escHtml(r.comments||r.text||r.comment||'')+'</div>'
         +'</div>'
         +'<div style="display:flex;flex-direction:column;gap:.4rem;">'
         +(r.archived
@@ -540,3 +479,4 @@ loadConferences();
 
 /* ── Init ── */
 loadConferences();
+

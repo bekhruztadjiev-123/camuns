@@ -96,13 +96,13 @@
     <div class="about-label">About the Platform</div>
     <h2 class="about-h2">Built for the Central Asian MUN community</h2>
     <p class="about-p">MUN Central Asia is the first dedicated directory for Model United Nations conferences across the region.</p>
-    <p class="about-p">Reviews are verified through Telegram &#8212; only real participants can share their experience. No spam, no fake ratings.</p>
+    <p class="about-p">Reviews are verified through authenticated Supabase accounts to keep ratings fair and spam-free.</p>
     <p class="about-p">Want to list your conference? Use the Admin panel if you have credentials.</p>
   </div>
   <div class="about-cards">
     <div class="about-card"><div class="about-card-title">For Delegates</div><div class="about-card-text">Find upcoming conferences, compare committees and fees, and read honest reviews from past participants.</div></div>
     <div class="about-card"><div class="about-card-title">For Organisers</div><div class="about-card-text">List your conference and reach hundreds of active MUN delegates across Central Asia.</div></div>
-    <div class="about-card"><div class="about-card-title">Verified Reviews</div><div class="about-card-text">Every review is tied to a real Telegram account. Delegates, chairs, observers, and guests can all share their perspective.</div></div>
+    <div class="about-card"><div class="about-card-title">Verified Reviews</div><div class="about-card-text">Every review is tied to an authenticated account. Delegates, chairs, observers, and guests can all share their perspective.</div></div>
     <div class="about-card"><div class="about-card-title">Growing Coverage</div><div class="about-card-text">Currently covering Uzbekistan, with Kazakhstan, Kyrgyzstan, Tajikistan, and Turkmenistan coming soon.</div></div>
   </div>
 </section>
@@ -151,6 +151,8 @@
 </footer>
 
 <script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/auth.js"></script>
 <script src="data/fallback.js"></script>
 <script src="js/helpers.js"></script>
 <script src="js/theme.js"></script>

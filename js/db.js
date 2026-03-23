@@ -5,6 +5,40 @@ var CONFS = [];
    LOAD CONFERENCES
    ═══════════════════════════════════════════ */
 function loadConferences() {
+  var st = window.__authState || {};
+  var authed = st.user;
+  if (!authed) {
+    if (st.status === 'loading') {
+      var gLoad = document.getElementById('conf-grid');
+      if (gLoad) {
+        gLoad.innerHTML = '<div style="padding:2rem 1.2rem;color:var(--muted);font-size:.85rem;"><span class="spinner"></span> Checking session...</div>';
+      }
+      return;
+    }
+    CONFS = [];
+    // Hide filters for logged-out users
+    var fw = document.getElementById('filter-wrap');
+    if (fw) fw.style.display = 'none';
+
+    // Update counters
+    try { updateStats(); } catch (e) {}
+
+    // Show empty directory + sign-in CTA
+    var g = document.getElementById('conf-grid');
+    if (g) {
+      g.innerHTML =
+        '<div class="no-results" style="grid-column:1/-1;padding:2rem 1.2rem;">'
+        + '<span style="display:block;color:var(--muted);font-size:.9rem;margin-bottom:1rem;">'
+        + 'Sign in to view the conference directory.'
+        + '</span>'
+        + '<button onclick="openAuth(\"delegate\")" style="font-family:\'DM Mono\',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--bg);border:none;padding:10px 22px;cursor:pointer;">'
+        + 'Sign in'
+        + '</button>'
+        + '</div>';
+    }
+    return;
+  }
+
   if (!SB_CONFIGURED) {
     CONFS = JSON.parse(JSON.stringify(LOCAL_CONFS));
     showFilterBar();
@@ -87,6 +121,16 @@ function loadConferences() {
     });
 }
 
+// Reload directory automatically after login/logout
+try {
+  if (typeof window.authSubscribe === 'function') {
+    window.authSubscribe(function (st) {
+      // Avoid running before DOM is ready
+      try { loadConferences(); } catch (e) {}
+    });
+  }
+} catch (e) {}
+
 /* Fetch fresh reviews for one conference from Supabase and update local cache */
 function refreshReviews(confId, callback) {
   if (!SB_CONFIGURED) { if(callback) callback(); return; }
@@ -129,7 +173,7 @@ function recalcRating(c, pushToDB){
       method:'PATCH',
       headers:{
         'apikey':SUPABASE_ANON,
-        'Authorization':'Bearer '+SUPABASE_ANON,
+        'Authorization':'Bearer '+((window.__sbAccessToken && window.__sbAccessToken.length) ? window.__sbAccessToken : SUPABASE_ANON),
         'Content-Type':'application/json',
         'Prefer':'return=representation'
       },

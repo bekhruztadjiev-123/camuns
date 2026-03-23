@@ -1,36 +1,47 @@
 /* MUN Central Asia — reviews.js */
 /* ── REVIEWS ── */
-var tgUser=null;
+var __reviewAuthHooked = false;
 
-// Restore session if available
-try {
-  var _stored = sessionStorage.getItem('mun_tg_user');
-  if(_stored) tgUser = JSON.parse(_stored);
-} catch(e){}
+// Telegram auth removed (now using Supabase auth via auth.js)
 
-function onTgAuth(u){
-  tgUser=u;
-  try { sessionStorage.setItem('mun_tg_user', JSON.stringify(u)); } catch(e){}
-  refreshAuthUI();
-}
-function tgLogout(){
-  tgUser=null;
-  try { sessionStorage.removeItem('mun_tg_user'); } catch(e){}
-  refreshAuthUI();
-}
+function refreshReviewAuthUI(){
+  var authEl = document.getElementById('auth-block');
+  var userEl = document.getElementById('user-bar');
+  var formEl = document.getElementById('review-form');
+  if(!authEl || !userEl || !formEl) return;
 
-function refreshAuthUI(){
-  var authEl=document.getElementById('tg-auth-block');
-  var userEl=document.getElementById('user-bar');
-  var formEl=document.getElementById('review-form');
-  if(!authEl)return;
-  if(tgUser){
-    authEl.classList.add('hidden');userEl.classList.add('visible');formEl.classList.add('visible');
-    var ini=(tgUser.first_name.charAt(0)+(tgUser.last_name?tgUser.last_name.charAt(0):'')).toUpperCase();
-    document.getElementById('u-avatar').textContent=ini;
-    document.getElementById('u-name').textContent=(tgUser.first_name+' '+(tgUser.last_name||'')).trim();
+  var st = window.__authState || {};
+  var profile = st.profile || null;
+  var isDelegate = st.role === 'delegate';
+
+  if(isDelegate && profile){
+    authEl.classList.add('hidden');
+    userEl.classList.add('visible');
+    formEl.classList.add('visible');
+
+    var initials = profile.initials;
+    if(!initials){
+      var dn = profile.display_name || (st.user && st.user.email) || '';
+      initials = dn.split(' ').filter(Boolean).map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase();
+    }
+    var displayName = profile.display_name || (st.user && st.user.email) || 'Delegate';
+
+    var ua = document.getElementById('u-avatar');
+    if(ua) ua.textContent = initials || '?';
+    var un = document.getElementById('u-name');
+    if(un) un.textContent = displayName;
   } else {
-    authEl.classList.remove('hidden');userEl.classList.remove('visible');formEl.classList.remove('visible');
+    authEl.classList.remove('hidden');
+    userEl.classList.remove('visible');
+    formEl.classList.remove('visible');
+  }
+}
+
+function ensureReviewAuthSubscription(){
+  if(__reviewAuthHooked) return;
+  __reviewAuthHooked = true;
+  if(typeof window.authSubscribe === 'function'){
+    window.authSubscribe(function(){ refreshReviewAuthUI(); });
   }
 }
 
@@ -69,6 +80,14 @@ function buildRatingBreakdown(reviews){
   return html+'</div>';
 }
 
+function safeBgColorFromReview(r){
+  var c = r && r.color ? String(r.color) : '';
+  // Allow only basic hex colors to prevent CSS injection via `style="background:..."`
+  if (/^#[0-9a-fA-F]{6}$/.test(c) || /^#[0-9a-fA-F]{3}$/.test(c)) return c;
+  // Fallback: deterministic safe color generated from text
+  return pal(r && (r.user_name||r.user||r.initials||'') ? (r.user_name||r.user||r.initials||'') : '');
+}
+
 function renderReviewList(c){
   var reviews=(c.reviews||[]).filter(function(r){return !r.archived;});
   var sorted=buildSortedReviews(reviews);
@@ -84,11 +103,11 @@ function renderReviewList(c){
       : (r.date||'');
     html+='<div class="review-item">'
       +'<div class="review-header">'
-      +'<div class="rv-avatar" style="background:'+escHtml(r.color||pal(r.user_name||r.user||''))+'">'+escHtml(r.initials||'?')+'</div>'
+      +'<div class="rv-avatar" style="background:'+escHtml(safeBgColorFromReview(r))+'">'+escHtml(r.initials||'?')+'</div>'
       +'<div><div class="rv-name">'+escHtml(r.user_name||r.user||'')+'</div><div class="rv-role">'+escHtml(r.role||'')+'</div></div>'
       +'<div class="rv-stars">'+starsStr(stars)+'</div>'
       +'</div>'
-      +'<div class="rv-text">'+escHtml(r.comment||r.text||'')+'</div>'
+      +'<div class="rv-text">'+escHtml(r.comments||r.comment||r.text||'')+'</div>'
       +'<div class="rv-date">'+escHtml(dateStr)+'</div>'
       +'</div>';
   }
@@ -120,16 +139,16 @@ function renderReviews(c){
   document.getElementById('modal-reviews').innerHTML=
     '<div class="sec-title">Delegate Reviews</div>'
     +ratingBreakdown
-    +'<div class="tg-auth-block" id="tg-auth-block">'
+    +'<div class="auth-block" id="auth-block">'
     +'<div class="tg-icon">✈️</div>'
-    +'<div class="tg-text"><strong>Leave a verified review</strong><span>Sign in with Telegram to write a verified review</span></div>'
-    +'<div id="tg-widget-wrap"></div>'
+    +'<div class="tg-text"><strong>Leave a verified review</strong><span>Sign in to write a verified review</span></div>'
+    +'<button class="btn-p" style="margin-left:auto;" type="button" onclick="openAuth(\'delegate\')">Sign in</button>'
     +'</div>'
     +'<div class="user-bar" id="user-bar">'
     +'<div class="u-avatar" id="u-avatar"></div>'
     +'<div class="u-name" id="u-name"></div>'
-    +'<span class="u-badge">Verified via Telegram</span>'
-    +'<button class="logout-btn" onclick="tgLogout()">Sign out</button>'
+    +'<span class="u-badge">Verified account</span>'
+    +'<button class="logout-btn" onclick="if(window.authSignOut)window.authSignOut()">Sign out</button>'
     +'</div>'
     +'<div class="review-form" id="review-form">'
     +'<div class="form-row"><label class="form-label">Your Rating</label><div class="star-picker" id="star-picker">'+starPickerHtml+'</div></div>'
@@ -149,60 +168,58 @@ function renderReviews(c){
     +'<div id="review-list-'+c.id+'"></div>';
 
   renderReviewList(c);
-  refreshAuthUI();
-
-  // Only inject widget if user not already logged in
-  // Delay slightly so the DOM node exists
-  setTimeout(function(){
-    var wrap = document.getElementById('tg-widget-wrap');
-    if(wrap && !tgUser){
-      // Clear any previous widget first
-      wrap.innerHTML = '';
-      var s = document.createElement('script');
-      s.async = true;
-      s.src = 'https://telegram.org/js/telegram-widget.js?22';
-      s.setAttribute('data-telegram-login','camuns_reviewbot');
-      s.setAttribute('data-size','medium');
-      s.setAttribute('data-onauth','onTgAuth(user)');
-      s.setAttribute('data-request-access','write');
-      wrap.appendChild(s);
-    }
-  }, 150);
+  ensureReviewAuthSubscription();
+  refreshReviewAuthUI();
 }
 
 function pickStar(v){selStar=v;var p=document.querySelectorAll('.star-pick');for(var i=0;i<p.length;i++)p[i].classList.toggle('on',i<v);}
 function pickRole(btn,r){selRole=r;var o=document.querySelectorAll('.role-opt');for(var i=0;i<o.length;i++)o[i].classList.remove('on');btn.classList.add('on');}
 
 function submitReview(cid){
-  if(!tgUser){ alert('Please sign in with Telegram first.'); refreshAuthUI(); return; }
+  var st = window.__authState || {};
+  if(!st.user || st.role !== 'delegate'){
+    alert('Please sign in as a delegate first.');
+    refreshReviewAuthUI();
+    return;
+  }
   if(!selStar)return alert('Please select a star rating.');
   if(!selRole)return alert('Please select your role.');
   var txt=document.getElementById('rtext').value.trim();
   if(!txt)return alert('Please write a short review.');
   var c=null; for(var i=0;i<CONFS.length;i++){if(String(CONFS[i].id)===String(cid)){c=CONFS[i];break;}}
-  var ini=(tgUser.first_name.charAt(0)+(tgUser.last_name?tgUser.last_name.charAt(0):'')).toUpperCase();
-  var color=pal(tgUser.first_name);
-  var userName=(tgUser.first_name+' '+(tgUser.last_name||'')).trim();
+  // initials + display info are derived from the logged-in Supabase profile
+  var profile = st.profile || {};
+  var userName = profile.display_name || (st.user && st.user.email) || 'Delegate';
+  var ini = profile.initials;
+  if(!ini){
+    ini = userName.split(' ').filter(Boolean).map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+  }
+  var color = profile.color || pal(userName);
+  // userName is derived from the logged-in Supabase profile
 
   // Capture values FIRST before anything resets them
   var savedRole  = selRole;
   var savedStars = selStar;
-  var savedTgId  = tgUser ? tgUser.id : null;
+  var savedUserId = st.user ? st.user.id : null;
 
   // Optimistic local update for instant feedback
   var localRev={
     id: Date.now(),
     conference_id: cid,
+    user_id: savedUserId,
     user: userName, user_name: userName,
     initials: ini, color: color,
     role: savedRole, stars: savedStars, rating: savedStars,
-    text: txt, comment: txt,
+    comments: txt,
     created_at: new Date().toISOString(),
     archived: false
   };
   if(!c.reviews) c.reviews=[];
+  if(savedUserId){
+    c.reviews = c.reviews.filter(function(r){ return String(r.user_id) !== String(savedUserId); });
+  }
   c.reviews.unshift(localRev);
-  recalcRating(c, true);
+  recalcRating(c, false);
 
   // Reset form
   document.getElementById('rtext').value='';
@@ -224,16 +241,16 @@ function submitReview(cid){
     var safeRole = (savedRole && savedRole !== 'null') ? String(savedRole) : 'Delegate';
     var safeTxt  = safStr(txt, '').substring(0,500);
     var payload = {
-      conference_id: Number(cid)        || 0,
-      user_name:     safeName,
-      initials:      safeIni,
-      color:         String(color)      || '#888',
-      role:          safeRole,
-      rating:        Number(savedStars) || 1,
-      comment:       safeTxt,
-      archived:      false
+      conference_id: Number(cid) || 0,
+      user_id: savedUserId,
+      user_name: safeName,
+      initials: safeIni,
+      color: String(color) || '#888',
+      role: safeRole,
+      rating: Number(savedStars) || 1,
+      comments: safeTxt,
+      archived: false
     };
-    if(savedTgId && !isNaN(Number(savedTgId))) payload.tg_id = Number(savedTgId);
     var payloadStr;
     try {
       payloadStr = JSON.stringify(payload);
@@ -243,19 +260,19 @@ function submitReview(cid){
       console.warn('JSON build failed:', e, payload);
       return;
     }
-    console.log('Posting review payload:', payloadStr);
-    fetch(SUPABASE_URL + '/rest/v1/reviews', {
+    // Avoid logging user-generated content in production.
+    var accessToken = (window.__sbAccessToken && window.__sbAccessToken.length) ? window.__sbAccessToken : SUPABASE_ANON;
+    fetch(SUPABASE_URL + '/rest/v1/reviews?on_conflict=conference_id,user_id', {
       method:  'POST',
       headers: {
         'apikey':         SUPABASE_ANON,
-        'Authorization':  'Bearer ' + SUPABASE_ANON,
+        'Authorization':  'Bearer ' + accessToken,
         'Content-Type':   'application/json',
-        'Prefer':         'return=representation'
+        'Prefer':         'resolution=merge-duplicates,return=representation'
       },
       body: payloadStr
     })
     .then(function(r){
-      console.log('Review POST status:', r.status);
       if(!r.ok){
         return r.text().then(function(t){
           throw new Error('HTTP '+r.status+': '+t);
@@ -263,31 +280,13 @@ function submitReview(cid){
       }
       return r.json();
     })
-    .then(function(saved){
-      console.log('Review saved to Supabase:', saved);
-      // Update conference rating in DB
-      var c2=null; for(var i=0;i<CONFS.length;i++){if(String(CONFS[i].id)===String(cid)){c2=CONFS[i];break;}}
-      if(c2){
-        fetch(SUPABASE_URL + '/rest/v1/conferences?id=eq.'+Number(cid), {
-          method: 'PATCH',
-          headers: {
-            'apikey':        SUPABASE_ANON,
-            'Authorization': 'Bearer ' + SUPABASE_ANON,
-            'Content-Type':  'application/json',
-            'Prefer':        'return=representation'
-          },
-          body: JSON.stringify({
-            rating:       c2.rating,
-            rating_count: c2.rating_count||c2.ratingCount||0
-          })
-        }).catch(function(){});
-      }
-      // Refresh from DB
+    .then(function(){
+      // Refresh from DB (RLS + uniqueness are enforced server-side)
       refreshReviews(cid, function(updated){
         if(updated && document.getElementById('modal-reviews')) renderReviews(updated);
       });
     })
-    .catch(function(e){ console.warn('Review save failed:', e.message); });
+    .catch(function(e){ /* keep error silent to avoid leaking request context */ });
   }
 }
 

@@ -15,7 +15,7 @@ function sbFetch(path, opts) {
   var body   = (opts && opts.body)   ? opts.body   : undefined;
   var headers = {
     'apikey':        SUPABASE_ANON,
-    'Authorization': 'Bearer ' + SUPABASE_ANON,
+    'Authorization': 'Bearer ' + ((window.__sbAccessToken && window.__sbAccessToken.length) ? window.__sbAccessToken : SUPABASE_ANON),
     'Content-Type':  'application/json',
     'Prefer':        'return=representation'
   };
