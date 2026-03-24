@@ -255,26 +255,33 @@ function __renderDelegateOverview(d) {
   var approved   = d.approved  || [];
   var reviews    = d.reviews   || [];
   var countries  = d.countries || [];
-  var name       = profile.display_name || 'Delegate';
-  var initials   = profile.initials || __makeInitials(name);
+
+  function safStr(s) { return (!s || s==='null' || s==='undefined') ? '' : String(s).trim(); }
+  var name       = safStr(profile.display_name) || 'Delegate';
+  var country    = safStr(profile.country);
+  var bio        = safStr(profile.bio);
+  var avatar     = safStr(profile.avatar_url);
+  var initials   = safStr(profile.initials) || __makeInitials(name);
   var color      = (profile.color && /^#[0-9a-fA-F]{3,6}$/.test(profile.color)) ? profile.color : pal(name);
 
   /* Committees from CONFS local cache */
-  var committees = __committeesFromAttendance(verified.map(function (a) { return a.conference_id; }));
+  var committees = typeof __committeesFromAttendance === 'function' ? __committeesFromAttendance(verified.map(function(a){return a.conference_id;})) : [];
+
+  var fallbackAvatar = '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">' + escHtml(initials) + '</div>';
 
   var html =
     /* Avatar + name block */
     '<div style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">'
-    + (profile.avatar_url 
-        ? '<img src="' + escHtml(profile.avatar_url) + '" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:1px solid var(--border);flex-shrink:0;"/>' 
-        : '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">' + escHtml(initials) + '</div>')
+    + (avatar 
+        ? '<img src="' + escHtml(avatar) + '" onerror="this.outerHTML=\'' + fallbackAvatar.replace(/'/g, '&#39;') + '\'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:1px solid var(--border);flex-shrink:0;"/>' 
+        : fallbackAvatar)
     + '<div>'
     + '<div style="font-family:\'Playfair Display\',serif;font-size:1.2rem;font-weight:700;">' + escHtml(name) + '</div>'
     + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">'
-    + (profile.country ? escHtml(profile.country) + ' &middot; ' : '')
+    + (country ? escHtml(country) + ' &middot; ' : '')
     + 'Delegate'
     + '</div>'
-    + (profile.bio ? '<div style="font-size:.8rem;color:var(--muted);margin-top:.4rem;line-height:1.5;">' + escHtml(profile.bio) + '</div>' : '')
+    + (bio ? '<div style="font-size:.8rem;color:var(--muted);margin-top:.4rem;line-height:1.5;white-space:pre-wrap;">' + escHtml(bio) + '</div>' : '')
     + '</div>'
     + '</div>'
 
@@ -881,8 +888,13 @@ window.__switchOrgTab = function (tab) {
 function __renderOrgOverview(d) {
   var profile = d.profile || {};
   var confs   = d.confs   || [];
-  var name    = profile.display_name || 'Organizer';
-  var initials= profile.initials || __makeInitials(name);
+  
+  function safStr(s) { return (!s || s==='null' || s==='undefined') ? '' : String(s).trim(); }
+  var name    = safStr(profile.display_name) || 'Organizer';
+  var country = safStr(profile.country);
+  var bio     = safStr(profile.bio);
+  var avatar  = safStr(profile.avatar_url);
+  var initials= safStr(profile.initials) || __makeInitials(name);
   var color   = (profile.color && /^#[0-9a-fA-F]{3,6}$/.test(profile.color)) ? profile.color : pal(name);
 
   /* Aggregate stats */
@@ -900,22 +912,23 @@ function __renderOrgOverview(d) {
     }
   }
   var avgRating = ratingCount > 0 ? Math.round((totalRatings / ratingCount) * 10) / 10 : null;
-
   var pendingApproval = !profile.approved;
+
+  var fallbackAvatar = '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">' + escHtml(initials) + '</div>';
 
   var html =
     '<div style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">'
-    + (profile.avatar_url 
-        ? '<img src="' + escHtml(profile.avatar_url) + '" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:1px solid var(--border);flex-shrink:0;"/>' 
-        : '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">' + escHtml(initials) + '</div>')
+    + (avatar 
+        ? '<img src="' + escHtml(avatar) + '" onerror="this.outerHTML=\'' + fallbackAvatar.replace(/'/g, '&#39;') + '\'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:1px solid var(--border);flex-shrink:0;"/>' 
+        : fallbackAvatar)
     + '<div>'
     + '<div style="font-family:\'Playfair Display\',serif;font-size:1.2rem;font-weight:700;">' + escHtml(name) + '</div>'
     + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">'
-    + (profile.country ? escHtml(profile.country) + ' &middot; ' : '')
+    + (country ? escHtml(country) + ' &middot; ' : '')
     + 'Organizer'
     + (pendingApproval ? ' &middot; <span style="color:var(--accent);">Pending approval</span>' : '')
     + '</div>'
-    + (profile.bio ? '<div style="font-size:.8rem;color:var(--muted);margin-top:.4rem;line-height:1.5;">' + escHtml(profile.bio) + '</div>' : '')
+    + (bio ? '<div style="font-size:.8rem;color:var(--muted);margin-top:.4rem;line-height:1.5;white-space:pre-wrap;">' + escHtml(bio) + '</div>' : '')
     + '</div>'
     + '</div>';
 
