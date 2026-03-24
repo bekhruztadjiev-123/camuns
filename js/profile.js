@@ -542,6 +542,8 @@ window.__saveProfileSettings = function () {
   if (!SB_CONFIGURED) {
     /* Update local state only */
     if (st.profile) Object.assign(st.profile, payload);
+    if (window.__profileData && window.__profileData.profile) Object.assign(window.__profileData.profile, payload);
+    if (window.__orgProfileData && window.__orgProfileData.profile) Object.assign(window.__orgProfileData.profile, payload);
     if (okEl) { okEl.textContent = 'Saved (local only).'; okEl.classList.add('visible'); }
     return;
   }
@@ -564,8 +566,10 @@ window.__saveProfileSettings = function () {
           body: JSON.stringify(payload)
         }).then(function (r) {
           if (!r.ok) throw new Error('HTTP ' + r.status);
-          /* Update local auth state */
+          /* Update local auth state and UI caches */
           if (st.profile) Object.assign(st.profile, payload);
+          if (window.__profileData && window.__profileData.profile) Object.assign(window.__profileData.profile, payload);
+          if (window.__orgProfileData && window.__orgProfileData.profile) Object.assign(window.__orgProfileData.profile, payload);
           if (typeof __updateNavBtn === 'function') __updateNavBtn(window.__authState);
           if (okEl) { okEl.textContent = 'Profile saved.'; okEl.classList.add('visible'); }
           if (errEl) errEl.classList.remove('visible');
@@ -573,8 +577,10 @@ window.__saveProfileSettings = function () {
           if (errEl) { errEl.textContent = 'Save failed: ' + (err.message || 'RLS policy error. Ask admin to update policies.'); errEl.classList.add('visible'); }
         });
       } else {
-        /* Success */
+        /* Success - update state and UI caches */
         if (st.profile) Object.assign(st.profile, payload);
+        if (window.__profileData && window.__profileData.profile) Object.assign(window.__profileData.profile, payload);
+        if (window.__orgProfileData && window.__orgProfileData.profile) Object.assign(window.__orgProfileData.profile, payload);
         if (typeof __updateNavBtn === 'function') __updateNavBtn(window.__authState);
         if (okEl) { okEl.textContent = 'Profile saved.'; okEl.classList.add('visible'); }
         if (errEl) errEl.classList.remove('visible');
