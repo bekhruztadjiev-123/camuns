@@ -647,13 +647,17 @@ function __setSession(session) {
           },
           body: JSON.stringify(payload)
         })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return r.json().catch(function(){ return []; }); })
         .then(function (rows) {
+          if (Array.isArray(rows) && rows.length === 0) {
+            console.error('RLS policy blocked profile creation! Generating local fallback.');
+            return payload; /* Fallback to local profile so login doesn't freeze */
+          }
           return Array.isArray(rows) ? rows[0] : rows;
         })
         .catch(function () {
-          /* If insert fails (duplicate, RLS etc.), try loading again */
-          return __loadProfile(session.user.id);
+          /* If insert fails (network error), fallback local */
+          return payload;
         });
       }
       return profile;

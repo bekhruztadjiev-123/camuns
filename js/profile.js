@@ -573,6 +573,11 @@ window.__saveProfileSettings = function () {
           body: JSON.stringify(payload)
         }).then(function (r) {
           if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json().catch(function() { return []; });
+        }).then(function (rows) {
+          if (Array.isArray(rows) && rows.length === 0) {
+            throw new Error('Database refused to save. Row-Level Security (RLS) policies are blocking your changes.');
+          }
           /* Update local auth state and UI caches */
           if (st.profile) Object.assign(st.profile, payload);
           if (window.__profileData && window.__profileData.profile) Object.assign(window.__profileData.profile, payload);
