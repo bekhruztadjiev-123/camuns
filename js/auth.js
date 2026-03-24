@@ -642,6 +642,23 @@ function __setSession(session) {
     .then(function (profile) {
       __clearRoleHint();
 
+      /* Admin upgrade: if logged in via /#admin flow and profile exists
+         but role isn't admin, upgrade the role in the DB. */
+      if (__authStep === 'admin-login' && profile && profile.role !== 'admin') {
+        profile.role    = 'admin';
+        profile.approved = true;
+        /* Fire-and-forget DB update */
+        fetch(SUPABASE_URL + '/rest/v1/profiles?user_id=eq.' + profile.user_id, {
+          method:  'PATCH',
+          headers: {
+            'apikey':        SUPABASE_ANON,
+            'Authorization': 'Bearer ' + (session.access_token || SUPABASE_ANON),
+            'Content-Type':  'application/json'
+          },
+          body: JSON.stringify({ role: 'admin', approved: true })
+        }).catch(function () {});
+      }
+
       window.__authState.profile  = profile || null;
       window.__authState.role     = profile ? profile.role     : null;
       window.__authState.approved = profile ? !!profile.approved : false;
@@ -658,7 +675,7 @@ function __setSession(session) {
       if (!isOpen) return;
 
       if (!profile || !profile.role) {
-        __showAuthError('Could not load your profile. Please sign out and try again.');
+        __showAuthError('Could not create your profile. Please check your connection and try again.');
         return;
       }
 

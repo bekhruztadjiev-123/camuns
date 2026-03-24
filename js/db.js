@@ -31,7 +31,7 @@ function loadConferences() {
         + '<span style="display:block;color:var(--muted);font-size:.9rem;margin-bottom:1rem;">'
         + 'Sign in to view the conference directory.'
         + '</span>'
-        + '<button onclick="openAuth(\"delegate\")" style="font-family:\'DM Mono\',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--bg);border:none;padding:10px 22px;cursor:pointer;">'
+        + '<button onclick="window.openAuth('delegate')" style="font-family:\'DM Mono\',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;background:var(--accent);color:var(--bg);border:none;padding:10px 22px;cursor:pointer;">'
         + 'Sign in'
         + '</button>'
         + '</div>';

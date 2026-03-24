@@ -318,7 +318,7 @@ function renderAdminAwardApprovals() {
       var AWARD_LABELS = {
         best_delegate:        'Best Delegate',
         outstanding_delegate: 'Outstanding Delegate',
-        verbal_commendation:  'Verbal Commendation',
+        verbal_commendation:  'Best Speaker',
         honorable_mention:    'Honorable Mention',
         best_position_paper:  'Best Position Paper'
       };

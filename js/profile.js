@@ -387,7 +387,7 @@ function __renderDelegateAwards(d) {
   var AWARD_LABELS = {
     best_delegate:       'Best Delegate',
     outstanding_delegate:'Outstanding Delegate',
-    verbal_commendation: 'Verbal Commendation',
+    verbal_commendation: 'Best Speaker',
     honorable_mention:   'Honorable Mention',
     best_position_paper: 'Best Position Paper'
   };
@@ -684,7 +684,7 @@ window.__submitAttendanceReport = function () {
 var AWARD_TYPES = [
   { key: 'best_delegate',        label: 'Best Delegate' },
   { key: 'outstanding_delegate', label: 'Outstanding Delegate' },
-  { key: 'verbal_commendation',  label: 'Verbal Commendation' },
+  { key: 'verbal_commendation',  label: 'Best Speaker' },
   { key: 'honorable_mention',    label: 'Honorable Mention' },
   { key: 'best_position_paper',  label: 'Best Position Paper' }
 ];
