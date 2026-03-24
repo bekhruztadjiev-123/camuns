@@ -809,24 +809,59 @@ window.__submitAwardClaim = function () {
 function __fetchAndRenderOrganizerProfile(profile, isOwnProfile) {
   var userId = profile.user_id;
 
-  /* Load conferences this organizer owns or co-manages */
-  window.__sbClient
+  if (!SB_CONFIGURED) {
+    __renderOrganizerProfile(profile, [], [], isOwnProfile);
+    return;
+  }
+
+  /* 1. Fetch co-management links */
+  var linksPromise = window.__sbClient
     .from('conference_organizers')
     .select('conference_id,role')
     .eq('user_id', userId)
-    .then(function (r) {
-      var links = (r && r.data) ? r.data : [];
-      var confIds = links.map(function (l) { return l.conference_id; });
+    .then(function (r) { return (r && r.data) ? r.data : []; })
+    .catch(function() { return []; });
 
-      /* Also include conferences where owner_id = userId (set on creation) */
-      return window.__sbClient
-        .from('conferences')
-        .select('id,name,city,dates,status,rating,rating_count,delegates,owner_id')
-        .or('owner_id.eq.' + userId + (confIds.length ? ',id.in.(' + confIds.join(',') + ')' : ''))
-        .then(function (r2) {
-          var confs = (r2 && r2.data) ? r2.data : [];
-          __renderOrganizerProfile(profile, confs, links, isOwnProfile);
-        });
+  /* 2. Fetch owned conferences directly */
+  var ownedPromise = window.__sbClient
+    .from('conferences')
+    .select('id,name,city,dates,status,rating,rating_count,delegates,owner_id')
+    .eq('owner_id', userId)
+    .then(function (r) { return (r && r.data) ? r.data : []; })
+    .catch(function() { return []; });
+
+  Promise.all([linksPromise, ownedPromise])
+    .then(function (results) {
+      var links = results[0];
+      var ownedConfs = results[1];
+      var confIds = links.map(function(l) { return l.conference_id; });
+
+      /* 3. If they are co-managers on other conferences, fetch those too */
+      if (confIds.length > 0) {
+        window.__sbClient
+          .from('conferences')
+          .select('id,name,city,dates,status,rating,rating_count,delegates,owner_id')
+          .in('id', confIds)
+          .then(function(r) {
+            var coConfs = (r && r.data) ? r.data : [];
+            /* Combine and deduplicate */
+            var allConfs = ownedConfs.concat(coConfs);
+            var unique = [];
+            var seen = {};
+            for (var i = 0; i < allConfs.length; i++) {
+              if (!seen[allConfs[i].id]) {
+                seen[allConfs[i].id] = true;
+                unique.push(allConfs[i]);
+              }
+            }
+            __renderOrganizerProfile(profile, unique, links, isOwnProfile);
+          })
+          .catch(function() {
+            __renderOrganizerProfile(profile, ownedConfs, links, isOwnProfile);
+          });
+      } else {
+        __renderOrganizerProfile(profile, ownedConfs, links, isOwnProfile);
+      }
     })
     .catch(function () {
       __renderOrganizerProfile(profile, [], [], isOwnProfile);
