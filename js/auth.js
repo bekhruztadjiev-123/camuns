@@ -65,6 +65,10 @@ function __setOverlayOpen(open) {
 function __showAuthError(msg) {
   var el = document.getElementById('admin-error');
   if (!el) return;
+  if (typeof msg === 'object') {
+    try { msg = JSON.stringify(msg); } catch (e) { msg = String(msg); }
+  }
+  if (msg === '{}' || !msg) msg = 'Rate limit exceeded or connection failed.';
   el.textContent = msg || '';
   el.classList.toggle('visible', !!msg);
 }
@@ -248,9 +252,12 @@ window.__authSendOtp = function () {
     var msg = 'Failed to send code. Check your connection.';
     if (err) {
       if (err.message) msg = err.message;
-      else if (typeof err === 'object') msg = JSON.stringify(err);
+      else if (typeof err === 'object') {
+        try { msg = JSON.stringify(err); } catch (e) { msg = String(err); }
+      }
       else msg = String(err);
     }
+    if (msg === '{}') msg = 'Email rate limit exceeded or connection blocked.';
     __showAuthError(msg);
     resetBtn();
   });

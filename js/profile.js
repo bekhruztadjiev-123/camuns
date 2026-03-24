@@ -201,17 +201,10 @@ function __renderDelegateProfile(profile, attendance, awards, reviews, isOwnProf
   ];
   if (isOwnProfile) tabs.push({ key: 'settings', label: 'Settings' });
 
-  var tabsHtml = '';
-  for (var i = 0; i < tabs.length; i++) {
-    var t = tabs[i];
-    tabsHtml += '<button class="admin-tab' + (__profileTab === t.key ? ' active' : '') + '"'
-      + ' onclick="__switchProfileTab(\'' + t.key + '\',' + JSON.stringify({ profile: profile, attendance: attendance, awards: awards, reviews: reviews, isOwnProfile: isOwnProfile, verified: verified, pending: pending, approved: approved, countries: countries }).split('"').join('&quot;') + ')">'
-      + escHtml(t.label) + '</button>';
-  }
   /* Avoid passing huge objects through inline onclick — use a global store instead */
   window.__profileData = { profile: profile, attendance: attendance, awards: awards, reviews: reviews, isOwnProfile: isOwnProfile, verified: verified, pending: pending, approved: approved, myPend: myPend, countries: countries };
 
-  tabsHtml = '';
+  var tabsHtml = '';
   for (var i = 0; i < tabs.length; i++) {
     var t = tabs[i];
     tabsHtml += '<button class="admin-tab' + (__profileTab === t.key ? ' active' : '') + '"'
@@ -272,8 +265,9 @@ function __renderDelegateOverview(d) {
   var html =
     /* Avatar + name block */
     '<div style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">'
-    + '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">'
-    + escHtml(initials) + '</div>'
+    + (profile.avatar_url 
+        ? '<img src="' + escHtml(profile.avatar_url) + '" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:1px solid var(--border);flex-shrink:0;"/>' 
+        : '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">' + escHtml(initials) + '</div>')
     + '<div>'
     + '<div style="font-family:\'Playfair Display\',serif;font-size:1.2rem;font-weight:700;">' + escHtml(name) + '</div>'
     + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">'
@@ -905,8 +899,9 @@ function __renderOrgOverview(d) {
 
   var html =
     '<div style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1.8rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">'
-    + '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">'
-    + escHtml(initials) + '</div>'
+    + (profile.avatar_url 
+        ? '<img src="' + escHtml(profile.avatar_url) + '" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:1px solid var(--border);flex-shrink:0;"/>' 
+        : '<div style="width:64px;height:64px;border-radius:50%;background:' + escHtml(color) + ';display:flex;align-items:center;justify-content:center;font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">' + escHtml(initials) + '</div>')
     + '<div>'
     + '<div style="font-family:\'Playfair Display\',serif;font-size:1.2rem;font-weight:700;">' + escHtml(name) + '</div>'
     + '<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">'
