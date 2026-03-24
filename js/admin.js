@@ -1,16 +1,11 @@
 /* MUN Central Asia — admin.js
-   Phase 2 update.
+   Phase 3 update.
 
-   Changes from previous version:
-   - openAdmin() no longer calls openAuth('admin', {googleOnly:true})
-     It defers entirely to the new auth.js flow; after login, __setSession
-     checks role === 'admin' and calls showAdminPanel() automatically.
-   - checkAdmin() and the old password-based admin login removed entirely.
-   - Added: "Organizer Approvals" tab — approves/rejects pending organizers.
-   - Added: "Conference Approvals" tab — publishes/rejects draft conferences.
-   - saveConference now sets status:'draft' when called by an organizer,
-     and requires admin to publish (status change via approval tab).
-   - Double loadConferences() call at bottom deduplicated.
+   - Admin panel: full access (Conferences, Reviews, Approvals, Award Approvals, + Add)
+   - Organizer panel: limited access (My Conferences, Award Approvals, + New Conference)
+   - showOrganizerPanel() — entry point for approved organizers
+   - Award approvals tab added for both admin and organizer
+   - owner_id is set on conference creation
 */
 
 var adminActiveTab = 'conferences';
@@ -40,11 +35,34 @@ function openAdmin() {
 }
 
 function closeAdmin() {
-  document.getElementById('admin-overlay').classList.remove('open');
+  /* If wizard was running inside profile panel, restore DOM IDs first */
+  var hiddenBody = document.getElementById('admin-body-hidden');
+  var hiddenFoot = document.getElementById('admin-footer-hidden');
+  if (hiddenBody) {
+    var pb = document.getElementById('admin-body');
+    var pf = document.getElementById('admin-footer');
+    hiddenBody.id = 'admin-body';
+    hiddenFoot.id = 'admin-footer';
+    if (pb) pb.id = 'profile-body';
+    if (pf) pf.id = 'profile-footer';
+  }
+  var ov = document.getElementById('admin-overlay');
+  if (ov) { ov.classList.remove('open'); }
   document.body.style.overflow = '';
   editingConfId = null;
   addData       = {};
 }
+
+/* ── Organizer panel (approved organizers only) ────────────────── */
+window.showOrganizerPanel = function () {
+  var st = window.__authState || {};
+  if (st.role !== 'organizer') return;
+
+  /* Organizers get their own profile panel — not the admin overlay */
+  if (typeof window.openProfile === 'function') {
+    window.openProfile();
+  }
+};
 
 /* ── Admin panel shell ─────────────────────────────────────────── */
 window.showAdminPanel = function () {
@@ -59,10 +77,11 @@ window.showAdminPanel = function () {
   var tabsBar = document.getElementById('admin-tabs-bar');
   tabsBar.style.display = 'flex';
   tabsBar.innerHTML =
-    '<button class="admin-tab active"  id="atab-conferences" onclick="switchAdminTab(\'conferences\')">Conferences</button>'
-    + '<button class="admin-tab" id="atab-reviews"      onclick="switchAdminTab(\'reviews\')">Reviews</button>'
-    + '<button class="admin-tab" id="atab-approvals"    onclick="switchAdminTab(\'approvals\')">Approvals</button>'
-    + '<button class="admin-tab" id="atab-add"          onclick="switchAdminTab(\'add\')">+ Add Conference</button>';
+    '<button class="admin-tab active" id="atab-conferences" onclick="switchAdminTab(\'conferences\')">Conferences</button>'
+    + '<button class="admin-tab" id="atab-reviews"       onclick="switchAdminTab(\'reviews\')">Reviews</button>'
+    + '<button class="admin-tab" id="atab-approvals"     onclick="switchAdminTab(\'approvals\')">Approvals</button>'
+    + '<button class="admin-tab" id="atab-award-approvals" onclick="switchAdminTab(\'award-approvals\')">Award Approvals</button>'
+    + '<button class="admin-tab" id="atab-add"           onclick="switchAdminTab(\'add\')">+ Add Conference</button>';
 
   var userLabel = 'Admin';
   try {
@@ -90,15 +109,16 @@ function adminLogout() {
 
 function switchAdminTab(tab) {
   adminActiveTab = tab;
-  var tabs = ['conferences', 'reviews', 'approvals', 'add'];
+  var tabs = ['conferences', 'reviews', 'approvals', 'award-approvals', 'add'];
   for (var i = 0; i < tabs.length; i++) {
     var el = document.getElementById('atab-' + tabs[i]);
     if (el) el.classList.toggle('active', tabs[i] === tab);
   }
-  if      (tab === 'conferences') renderAdminConferences();
-  else if (tab === 'reviews')     renderAdminReviews();
-  else if (tab === 'approvals')   renderAdminApprovals();
-  else if (tab === 'add')         renderAddStep(0);
+  if      (tab === 'conferences')     renderAdminConferences();
+  else if (tab === 'reviews')         renderAdminReviews();
+  else if (tab === 'approvals')       renderAdminApprovals();
+  else if (tab === 'award-approvals') renderAdminAwardApprovals();
+  else if (tab === 'add')             renderAddStep(0);
 }
 
 /* ── Tab: Conferences ──────────────────────────────────────────── */
@@ -275,6 +295,86 @@ window.rejectOrganizer = function (userId) {
   sbFetch('profiles?user_id=eq.' + userId, { method: 'DELETE' })
     .then(function () { renderAdminApprovals(); })
     .catch(function () { alert('Network error.'); });
+};
+
+/* ── Tab: Award Approvals ──────────────────────────────────────── */
+function renderAdminAwardApprovals() {
+  var body = document.getElementById('admin-body');
+  body.innerHTML = '<div style="color:var(--muted);font-size:.83rem;padding:1rem 0;"><span class="spinner"></span> Loading…</div>';
+
+  if (!SB_CONFIGURED) {
+    body.innerHTML = '<div style="color:var(--muted);font-size:.83rem;padding:1rem;">Supabase not configured.</div>';
+    return;
+  }
+
+  sbFetch('awards?status=eq.pending&select=id,conference_id,user_id,award_type,committee,created_at,profiles!awards_user_id_fkey(display_name,initials)')
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (awards) {
+      var html = '';
+      var AWARD_LABELS = {
+        best_delegate:        'Best Delegate',
+        outstanding_delegate: 'Outstanding Delegate',
+        verbal_commendation:  'Verbal Commendation',
+        honorable_mention:    'Honorable Mention',
+        best_position_paper:  'Best Position Paper'
+      };
+
+      if (!awards || awards.length === 0) {
+        html = '<div style="color:var(--muted);font-size:.83rem;padding:1rem;">No pending award claims.</div>';
+      } else {
+        html = '<div class="admin-conf-list">';
+        for (var i = 0; i < awards.length; i++) {
+          var a    = awards[i];
+          var conf = null;
+          for (var j = 0; j < CONFS.length; j++) {
+            if (String(CONFS[j].id) === String(a.conference_id)) { conf = CONFS[j]; break; }
+          }
+          var profile  = a.profiles || {};
+          var userName = profile.display_name || a.user_id;
+          var confName = conf ? conf.name : 'Conference #' + a.conference_id;
+          var awardLabel = AWARD_LABELS[a.award_type] || a.award_type;
+          html += '<div class="admin-conf-item">'
+            + '<div>'
+            + '<div class="acf-name">' + escHtml(userName) + ' — ' + escHtml(awardLabel) + '</div>'
+            + '<div class="acf-meta">' + escHtml(confName)
+            + (a.committee ? ' · ' + escHtml(a.committee) : '')
+            + '</div>'
+            + '</div>'
+            + '<div class="acf-actions">'
+            + '<button class="acf-btn" onclick="approveAward(' + a.id + ')">Approve</button>'
+            + '<button class="acf-btn danger" onclick="rejectAward(' + a.id + ')">Reject</button>'
+            + '</div></div>';
+        }
+        html += '</div>';
+      }
+      body.innerHTML = html;
+    })
+    .catch(function () {
+      body.innerHTML = '<div style="color:var(--red);font-size:.83rem;padding:1rem;">Failed to load award approvals.</div>';
+    });
+}
+
+window.approveAward = function (awardId) {
+  if (!SB_CONFIGURED) return;
+  sbFetch('awards?id=eq.' + awardId, {
+    method: 'PATCH',
+    body:   JSON.stringify({ status: 'approved' })
+  }).then(function (r) {
+    if (!r.ok) { alert('Failed to approve. Please try again.'); return; }
+    renderAdminAwardApprovals();
+  }).catch(function () { alert('Network error.'); });
+};
+
+window.rejectAward = function (awardId) {
+  if (!confirm('Reject this award claim?')) return;
+  if (!SB_CONFIGURED) return;
+  sbFetch('awards?id=eq.' + awardId, {
+    method: 'PATCH',
+    body:   JSON.stringify({ status: 'rejected' })
+  }).then(function (r) {
+    if (!r.ok) { alert('Failed to reject. Please try again.'); return; }
+    renderAdminAwardApprovals();
+  }).catch(function () { alert('Network error.'); });
 };
 
 /* ── Tab: Reviews ──────────────────────────────────────────────── */
@@ -692,6 +792,8 @@ function saveConference(isEdit) {
     addData.rating_count = 0;
     addData.reviews      = [];
 
+    var st = window.__authState || {};
+
     if (SB_CONFIGURED) {
       sbFetch('conferences', {
         method: 'POST',
@@ -702,18 +804,39 @@ function saveConference(isEdit) {
           website: addData.website, photos: addData.photos || [],
           committees: addData.committees, chairs: addData.chairs,
           fees: addData.fees, deadlines: addData.deadlines,
-          secretariat: addData.secretariat, rating_count: 0
+          secretariat: addData.secretariat, rating_count: 0,
+          owner_id: (st.user ? st.user.id : null)
         })
       })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (rows) {
-        if (rows && rows[0]) { addData.id = rows[0].id; }
-        CONFS.push(addData);
-        addData = {};
-        renderCards(CONFS);
-        updateStats();
-        switchAdminTab('conferences');
-        alert('Saved as draft. Use the Approvals tab to publish.');
+        if (rows && rows[0]) {
+          addData.id = rows[0].id;
+          /* Auto-insert into conference_organizers so owner can manage it */
+          if (st.user) {
+            sbFetch('conference_organizers', {
+              method: 'POST',
+              body:   JSON.stringify({ conference_id: addData.id, user_id: st.user.id, role: 'owner' })
+            }).catch(function () {});
+          }
+        }
+        if (st.role === 'organizer') {
+          /* Restore profile panel if wizard ran inside it */
+          if (typeof window.__restoreProfileFromWizard === 'function') {
+            window.__restoreProfileFromWizard();
+          } else {
+            addData = {};
+            if (typeof window.openProfile === 'function') window.openProfile();
+          }
+          alert('Conference saved as draft. An admin will review and publish it.');
+        } else {
+          CONFS.push(addData);
+          addData = {};
+          renderCards(CONFS);
+          updateStats();
+          switchAdminTab('conferences');
+          alert('Saved as draft. Use the Approvals tab to publish.');
+        }
       })
       .catch(function () { alert('Save failed. Please try again.'); });
     } else {

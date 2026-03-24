@@ -4,10 +4,29 @@ var __reviewAuthHooked = false;
 
 // Telegram auth removed (now using Supabase auth via auth.js)
 
-function refreshReviewAuthUI(){
+/* Check if delegate has reported attendance at a given conference */
+function __checkAttendanceGate(confId, callback) {
+  var st = window.__authState || {};
+  if (!st.user || !SB_CONFIGURED) { callback(true); return; } /* skip gate if offline */
+  window.__sbClient
+    .from('conference_attendance')
+    .select('status')
+    .eq('conference_id', confId)
+    .eq('user_id', st.user.id)
+    .maybeSingle()
+    .then(function (r) {
+      var row = r && r.data ? r.data : null;
+      /* Allow if attendance exists (pending OR verified) — rejected blocks */
+      callback(!row || row.status === 'rejected' ? false : true, row ? row.status : null);
+    })
+    .catch(function () { callback(true); }); /* fail-open to avoid blocking on network err */
+}
+
+function refreshReviewAuthUI(confId){
   var authEl = document.getElementById('auth-block');
   var userEl = document.getElementById('user-bar');
   var formEl = document.getElementById('review-form');
+  var gateEl = document.getElementById('review-gate');
   if(!authEl || !userEl || !formEl) return;
 
   var st = window.__authState || {};
@@ -17,7 +36,6 @@ function refreshReviewAuthUI(){
   if(isDelegate && profile){
     authEl.classList.add('hidden');
     userEl.classList.add('visible');
-    formEl.classList.add('visible');
 
     var initials = profile.initials;
     if(!initials){
@@ -25,23 +43,41 @@ function refreshReviewAuthUI(){
       initials = dn.split(' ').filter(Boolean).map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase();
     }
     var displayName = profile.display_name || (st.user && st.user.email) || 'Delegate';
-
     var ua = document.getElementById('u-avatar');
     if(ua) ua.textContent = initials || '?';
     var un = document.getElementById('u-name');
     if(un) un.textContent = displayName;
+
+    /* Attendance gate */
+    if(confId && SB_CONFIGURED) {
+      __checkAttendanceGate(confId, function(allowed, attStatus) {
+        if(allowed) {
+          formEl.classList.add('visible');
+          if(gateEl) gateEl.style.display = 'none';
+        } else {
+          formEl.classList.remove('visible');
+          if(gateEl) {
+            gateEl.style.display = '';
+            gateEl.innerHTML =
+              '<div style="background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.2);'
+              + 'padding:.9rem 1.1rem;font-size:.81rem;line-height:1.6;border-radius:2px;">'
+              + '<strong style="color:var(--accent);">Attendance required to review.</strong><br>'
+              + 'You must <a href="javascript:void(0)" onclick="window.openProfile()" '
+              + 'style="color:var(--accent);text-decoration:underline;">report your attendance</a> '
+              + 'at this conference before leaving a review. Your review will be saved once attendance is reported.'
+              + '</div>';
+          }
+        }
+      });
+    } else {
+      formEl.classList.add('visible');
+      if(gateEl) gateEl.style.display = 'none';
+    }
   } else {
     authEl.classList.remove('hidden');
     userEl.classList.remove('visible');
     formEl.classList.remove('visible');
-  }
-}
-
-function ensureReviewAuthSubscription(){
-  if(__reviewAuthHooked) return;
-  __reviewAuthHooked = true;
-  if(typeof window.authSubscribe === 'function'){
-    window.authSubscribe(function(){ refreshReviewAuthUI(); });
+    if(gateEl) gateEl.style.display = 'none';
   }
 }
 
@@ -101,10 +137,17 @@ function renderReviewList(c){
     var dateStr=r.created_at
       ? new Date(r.created_at).toLocaleDateString('en-US',{month:'short',year:'numeric'})
       : (r.date||'');
+    var hasProfile = !!r.user_id;
+    var avatarAttrs = hasProfile
+      ? ' style="background:'+escHtml(safeBgColorFromReview(r))+';cursor:pointer;" onclick="openProfile(\''+escHtml(r.user_id)+'\')" title="View profile"'
+      : ' style="background:'+escHtml(safeBgColorFromReview(r))+'"';
+    var nameHtml = hasProfile
+      ? '<span class="rv-name" onclick="openProfile(\''+escHtml(r.user_id)+'\')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;">'+escHtml(r.user_name||r.user||'')+'</span>'
+      : '<span class="rv-name">'+escHtml(r.user_name||r.user||'')+'</span>';
     html+='<div class="review-item">'
       +'<div class="review-header">'
-      +'<div class="rv-avatar" style="background:'+escHtml(safeBgColorFromReview(r))+'">'+escHtml(r.initials||'?')+'</div>'
-      +'<div><div class="rv-name">'+escHtml(r.user_name||r.user||'')+'</div><div class="rv-role">'+escHtml(r.role||'')+'</div></div>'
+      +'<div class="rv-avatar"'+avatarAttrs+'>'+escHtml(r.initials||'?')+'</div>'
+      +'<div>'+nameHtml+'<div class="rv-role">'+escHtml(r.role||'')+'</div></div>'
       +'<div class="rv-stars">'+starsStr(stars)+'</div>'
       +'</div>'
       +'<div class="rv-text">'+escHtml(r.comments||r.comment||r.text||'')+'</div>'
@@ -136,12 +179,13 @@ function renderReviews(c){
       +'</div>'
     : '';
 
+  var cid = c.id;
   document.getElementById('modal-reviews').innerHTML=
     '<div class="sec-title">Delegate Reviews</div>'
     +ratingBreakdown
     +'<div class="auth-block" id="auth-block">'
     +'<div class="tg-icon">✈️</div>'
-    +'<div class="tg-text"><strong>Leave a verified review</strong><span>Sign in to write a verified review</span></div>'
+    +'<div class="tg-text"><strong>Leave a verified review</strong><span>Sign in as a delegate to write a verified review</span></div>'
     +'<button class="btn-p" style="margin-left:auto;" type="button" onclick="openAuth(\'delegate\')">Sign in</button>'
     +'</div>'
     +'<div class="user-bar" id="user-bar">'
@@ -150,11 +194,12 @@ function renderReviews(c){
     +'<span class="u-badge">Verified account</span>'
     +'<button class="logout-btn" onclick="if(window.authSignOut)window.authSignOut()">Sign out</button>'
     +'</div>'
+    +'<div id="review-gate" style="display:none;"></div>'
     +'<div class="review-form" id="review-form">'
     +'<div class="form-row"><label class="form-label">Your Rating</label><div class="star-picker" id="star-picker">'+starPickerHtml+'</div></div>'
     +'<div class="form-row"><label class="form-label">Your Role</label><div class="role-selector">'+roleHtml+'</div></div>'
     +'<div class="form-row"><label class="form-label">Your Review</label><textarea class="rtext" id="rtext" placeholder="Share your experience — committees, chairs, organisation, venue…" maxlength="500"></textarea></div>'
-    +'<button class="submit-btn" onclick="submitReview('+c.id+')">Submit Review</button>'
+    +'<button class="submit-btn" onclick="submitReview('+cid+')">Submit Review</button>'
     +'</div>'
     +'<div class="reviews-count-title">'+countLabel+'</div>'
     +(reviews.length>1
@@ -169,7 +214,20 @@ function renderReviews(c){
 
   renderReviewList(c);
   ensureReviewAuthSubscription();
-  refreshReviewAuthUI();
+  refreshReviewAuthUI(c.id);
+}
+
+/* Re-run auth UI when auth state changes, passing active conference id */
+var __activeReviewConfId = null;
+function ensureReviewAuthSubscription(){
+  if(__reviewAuthHooked) return;
+  __reviewAuthHooked = true;
+  if(typeof window.authSubscribe === 'function'){
+    window.authSubscribe(function(){
+      /* Find active conference id from DOM if available */
+      refreshReviewAuthUI(__activeReviewConfId || null);
+    });
+  }
 }
 
 function pickStar(v){selStar=v;var p=document.querySelectorAll('.star-pick');for(var i=0;i<p.length;i++)p[i].classList.toggle('on',i<v);}
@@ -179,9 +237,26 @@ function submitReview(cid){
   var st = window.__authState || {};
   if(!st.user || st.role !== 'delegate'){
     alert('Please sign in as a delegate first.');
-    refreshReviewAuthUI();
+    refreshReviewAuthUI(cid);
     return;
   }
+  /* Enforce attendance gate server-side validation before submit */
+  if(SB_CONFIGURED) {
+    __checkAttendanceGate(cid, function(allowed) {
+      if(!allowed) {
+        alert('You must report attendance at this conference before leaving a review.');
+        return;
+      }
+      __doSubmitReview(cid);
+    });
+    return;
+  }
+  __doSubmitReview(cid);
+}
+
+function __doSubmitReview(cid){
+  var st = window.__authState || {};
+  if(!st.user) return;
   if(!selStar)return alert('Please select a star rating.');
   if(!selRole)return alert('Please select your role.');
   var txt=document.getElementById('rtext').value.trim();

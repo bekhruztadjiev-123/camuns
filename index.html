@@ -24,7 +24,7 @@
       <button class="theme-opt active" id="btn-dark"  onclick="setTheme('dark')">Dark</button>
       <button class="theme-opt"        id="btn-light" onclick="setTheme('light')">Light</button>
     </div>
-    <button class="admin-btn" onclick="openAdmin()">Admin</button>
+    <button class="admin-btn" id="auth-nav-btn" onclick="handleNavAuthClick()">Sign In</button>
   </div>
 </header>
 
@@ -97,7 +97,7 @@
     <h2 class="about-h2">Built for the Central Asian MUN community</h2>
     <p class="about-p">MUN Central Asia is the first dedicated directory for Model United Nations conferences across the region.</p>
     <p class="about-p">Reviews are verified through authenticated Supabase accounts to keep ratings fair and spam-free.</p>
-    <p class="about-p">Want to list your conference? Use the Admin panel if you have credentials.</p>
+    <p class="about-p">Want to list your conference? Sign up as an organizer — once approved by an admin you can create and manage conferences.</p>
   </div>
   <div class="about-cards">
     <div class="about-card"><div class="about-card-title">For Delegates</div><div class="about-card-text">Find upcoming conferences, compare committees and fees, and read honest reviews from past participants.</div></div>

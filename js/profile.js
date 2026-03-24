@@ -412,6 +412,7 @@ function __renderDelegateAwards(d) {
         + '<div class="acf-name">' + escHtml(AWARD_LABELS[a.award_type] || a.award_type) + '</div>'
         + '<div class="acf-meta">'
         + (conf ? escHtml(conf.name) + ' &middot; ' + escHtml(conf.city || '') + ' &middot; ' + escHtml(conf.dates || '') : 'Conference #' + escHtml(String(a.conference_id)))
+        + (a.committee ? ' &middot; ' + escHtml(a.committee) : '')
         + '</div>'
         + '</div>'
         + '<div style="font-size:1.2rem;">&#127942;</div>'
@@ -688,6 +689,10 @@ window.__claimAwardModal = function () {
     html += '<option value="' + AWARD_TYPES[i].key + '">' + escHtml(AWARD_TYPES[i].label) + '</option>';
   }
   html += '</select></div>'
+    + '<div class="field-group">'
+    + '<label class="field-label">Committee <span style="color:var(--muted);font-weight:300;">(optional)</span></label>'
+    + '<input class="field-input" id="claim-committee" placeholder="e.g. UNSC, UNEP, GA1" maxlength="80"/>'
+    + '</div>'
     + '<p style="font-size:.76rem;color:var(--muted);line-height:1.6;margin-top:.5rem;">'
     + 'The organizer or admin of that conference will be notified to approve your claim.'
     + '</p>'
@@ -705,12 +710,14 @@ window.__claimAwardModal = function () {
 window.__submitAwardClaim = function () {
   var st     = window.__authState || {};
   var confEl = document.getElementById('claim-conf');
-  var typeEl = document.getElementById('claim-type');
-  var errEl  = document.getElementById('claim-error');
+  var typeEl  = document.getElementById('claim-type');
+  var commEl  = document.getElementById('claim-committee');
+  var errEl   = document.getElementById('claim-error');
   if (!confEl || !typeEl || !st.user) return;
 
   var confId    = confEl.value;
   var awardType = typeEl.value;
+  var committee = commEl ? commEl.value.trim() : '';
 
   if (!confId) {
     if (errEl) { errEl.textContent = 'Please select a conference.'; errEl.classList.add('visible'); }
@@ -728,6 +735,7 @@ window.__submitAwardClaim = function () {
       conference_id: Number(confId),
       user_id:       st.user.id,
       award_type:    awardType,
+      committee:     committee || null,
       granted_by:    st.user.id,
       status:        'pending'
     })

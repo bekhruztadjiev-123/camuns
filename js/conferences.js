@@ -148,6 +148,9 @@ var activeId = null, selStar = 0, selRole = null;
 
 function openModal(id) {
   activeId = id; selStar = 0; selRole = null;
+  /* Track active conference for review attendance gate */
+  if (typeof __activeReviewConfId !== 'undefined') __activeReviewConfId = id;
+  else window.__activeReviewConfId = id;
   var c = null;
   for (var i = 0; i < CONFS.length; i++) { if (String(CONFS[i].id) === String(id)) { c = CONFS[i]; break; } }
   if (!c) return;

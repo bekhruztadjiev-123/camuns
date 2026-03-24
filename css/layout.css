@@ -13,8 +13,11 @@ nav a:hover{color:var(--text);}
 .theme-toggle{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:2px;overflow:hidden;transition:background .4s,border-color .4s;}
 .theme-opt{padding:6px 12px;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;font-family:'DM Mono',monospace;color:var(--muted);background:transparent;border:none;cursor:pointer;transition:all .25s;}
 .theme-opt.active{background:var(--accent);color:var(--bg);}
-.admin-btn{font-family:'DM Mono',monospace;font-size:.7rem;letter-spacing:.1em;background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;cursor:pointer;transition:all .25s;text-transform:uppercase;}
+.admin-btn{font-family:'DM Mono',monospace;font-size:.7rem;letter-spacing:.1em;background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;cursor:pointer;transition:all .25s;text-transform:uppercase;border-radius:2px;}
 .admin-btn:hover{border-color:var(--accent);color:var(--accent);}
+/* Nav avatar state (set via JS when logged in) */
+#auth-nav-btn{transition:background .25s,color .25s,border-radius .25s,width .25s,padding .25s;}
+#auth-nav-btn:hover{opacity:.85;}
 
 /* ── GLOBE CANVAS ── */
 #globe-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;}
