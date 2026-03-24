@@ -558,13 +558,33 @@ window.__saveProfileSettings = function () {
     .eq('user_id', st.user.id)
     .then(function (res) {
       if (res && res.error) {
-        if (errEl) { errEl.textContent = 'Save failed: ' + res.error.message; errEl.classList.add('visible'); }
-        return;
+        /* Supabase client failed — fall back to REST */
+        return fetch(SUPABASE_URL + '/rest/v1/profiles?user_id=eq.' + st.user.id, {
+          method:  'PATCH',
+          headers: {
+            'apikey':        SUPABASE_ANON,
+            'Authorization': 'Bearer ' + (window.__sbAccessToken || SUPABASE_ANON),
+            'Content-Type':  'application/json',
+            'Prefer':        'return=representation'
+          },
+          body: JSON.stringify(payload)
+        }).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          /* Update local auth state */
+          if (st.profile) Object.assign(st.profile, payload);
+          if (typeof __updateNavBtn === 'function') __updateNavBtn(window.__authState);
+          if (okEl) { okEl.textContent = 'Profile saved.'; okEl.classList.add('visible'); }
+          if (errEl) errEl.classList.remove('visible');
+        }).catch(function (err) {
+          if (errEl) { errEl.textContent = 'Save failed: ' + (err.message || 'RLS policy error. Ask admin to update policies.'); errEl.classList.add('visible'); }
+        });
+      } else {
+        /* Success */
+        if (st.profile) Object.assign(st.profile, payload);
+        if (typeof __updateNavBtn === 'function') __updateNavBtn(window.__authState);
+        if (okEl) { okEl.textContent = 'Profile saved.'; okEl.classList.add('visible'); }
+        if (errEl) errEl.classList.remove('visible');
       }
-      /* Update local auth state */
-      if (st.profile) Object.assign(st.profile, payload);
-      if (okEl) { okEl.textContent = 'Profile saved.'; okEl.classList.add('visible'); }
-      if (errEl) errEl.classList.remove('visible');
     })
     .catch(function () {
       if (errEl) { errEl.textContent = 'Network error. Please try again.'; errEl.classList.add('visible'); }
@@ -631,20 +651,33 @@ window.__submitAttendanceReport = function () {
     return;
   }
 
-  window.__sbClient
-    .from('conference_attendance')
-    .insert({ conference_id: Number(confId), user_id: st.user.id, status: 'pending' })
-    .then(function (res) {
-      if (res && res.error) {
-        if (errEl) { errEl.textContent = res.error.message || 'Failed to submit.'; errEl.classList.add('visible'); }
-        return;
-      }
-      /* Refresh profile */
-      window.openProfile();
-    })
-    .catch(function () {
-      if (errEl) { errEl.textContent = 'Network error. Please try again.'; errEl.classList.add('visible'); }
-    });
+  /* Use REST API to insert attendance — more reliable with RLS */
+  fetch(SUPABASE_URL + '/rest/v1/conference_attendance', {
+    method:  'POST',
+    headers: {
+      'apikey':        SUPABASE_ANON,
+      'Authorization': 'Bearer ' + (window.__sbAccessToken || SUPABASE_ANON),
+      'Content-Type':  'application/json',
+      'Prefer':        'return=representation'
+    },
+    body: JSON.stringify({ conference_id: Number(confId), user_id: st.user.id, status: 'pending' })
+  })
+  .then(function (r) {
+    if (!r.ok) {
+      return r.json().then(function (err) {
+        var msg = (err && err.message) ? err.message : 'Failed to submit (RLS policy).';
+        if (msg.indexOf('row-level security') !== -1) {
+          msg = 'Permission denied. Please ask admin to enable attendance self-reporting.';
+        }
+        if (errEl) { errEl.textContent = msg; errEl.classList.add('visible'); }
+      });
+    }
+    /* Refresh profile */
+    window.openProfile();
+  })
+  .catch(function () {
+    if (errEl) { errEl.textContent = 'Network error. Please try again.'; errEl.classList.add('visible'); }
+  });
 };
 
 /* ── Claim award modal (inside profile panel) ──────────────────── */

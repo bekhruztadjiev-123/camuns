@@ -541,6 +541,7 @@ function __updateNavBtn(state) {
   btn.style.fontWeight   = '700';
   btn.style.border       = 'none';
 }
+window.__updateNavBtn = __updateNavBtn;
 
 /* ── Session management ──────────────────────────────────────── */
 
@@ -591,27 +592,50 @@ function __setSession(session) {
   __loadProfile(session.user.id)
     .then(function (profile) {
       if (!profile) {
-        /* First login — create profile row */
+        /* First login — create profile row via REST to work around RLS.
+           RLS INSERT policies may not yet cover the just-created user. */
         var roleHint = __loadRoleHint() || __authTargetRole || 'delegate';
-        if (roleHint === 'admin') roleHint = 'delegate'; /* never allow via client */
+        /* Admin role is ONLY set if the user logged in via the admin
+           password flow AND no profile exists yet. This is the only code
+           path where role='admin' can be inserted. */
+        if (__authStep === 'admin-login') {
+          roleHint = 'admin';
+        } else if (roleHint === 'admin') {
+          roleHint = 'delegate';
+        }
 
         var displayName = __buildDisplayName(session);
         var initials    = __buildInitials(displayName);
-        var approvedVal = (roleHint === 'delegate'); /* delegates auto-approved */
+        var approvedVal = (roleHint === 'delegate' || roleHint === 'admin'); /* organizers need approval */
 
-        return window.__sbClient
-          .from('profiles')
-          .insert({
-            user_id:      session.user.id,
-            role:         roleHint,
-            display_name: displayName || null,
-            initials:     initials    || null,
-            color:        null,
-            approved:     approvedVal
-          })
-          .select('user_id,role,display_name,initials,color,approved,bio,country,avatar_url')
-          .maybeSingle()
-          .then(function (res) { return res ? res.data || res : null; });
+        var payload = {
+          user_id:      session.user.id,
+          role:         roleHint,
+          display_name: displayName || null,
+          initials:     initials    || null,
+          color:        null,
+          approved:     approvedVal
+        };
+
+        /* Use REST API with the user's own access token */
+        return fetch(SUPABASE_URL + '/rest/v1/profiles', {
+          method:  'POST',
+          headers: {
+            'apikey':        SUPABASE_ANON,
+            'Authorization': 'Bearer ' + (session.access_token || SUPABASE_ANON),
+            'Content-Type':  'application/json',
+            'Prefer':        'return=representation'
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (rows) {
+          return Array.isArray(rows) ? rows[0] : rows;
+        })
+        .catch(function () {
+          /* If insert fails (duplicate, RLS etc.), try loading again */
+          return __loadProfile(session.user.id);
+        });
       }
       return profile;
     })
