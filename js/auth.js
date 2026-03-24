@@ -226,21 +226,33 @@ window.__authSendOtp = function () {
 
   __saveRoleHint(__authTargetRole);
 
+  var resetBtn = function () {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send code'; }
+  };
+
   window.__sbClient.auth.signInWithOtp({
     email:   email,
     options: { shouldCreateUser: true }
   })
   .then(function (res) {
-    if (res.error) {
-      __showAuthError(res.error.message || 'Failed to send code. Please try again.');
-      if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send code'; }
+    if (res && res.error) {
+      var msg = res.error.message || res.error.msg;
+      if (!msg && typeof res.error === 'object') msg = JSON.stringify(res.error);
+      __showAuthError(msg || 'Failed to send code. Please try again.');
+      resetBtn();
       return;
     }
     __renderStepOtp();
   })
-  .catch(function () {
-    __showAuthError('Failed to send code. Please check your connection.');
-    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send code'; }
+  .catch(function (err) {
+    var msg = 'Failed to send code. Check your connection.';
+    if (err) {
+      if (err.message) msg = err.message;
+      else if (typeof err === 'object') msg = JSON.stringify(err);
+      else msg = String(err);
+    }
+    __showAuthError(msg);
+    resetBtn();
   });
 };
 
