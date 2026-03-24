@@ -1004,15 +1004,26 @@ window.__restoreProfileFromWizard = function () {
 };
 
 window.__openOrgEditConf = function (confId) {
-  /* Delegate editing to the admin.js editConf function
-     but only if the user owns this conference */
+  /* Open the admin overlay directly and call the shared edit wizard.
+     The organizer has access via conference_organizers, not admin role. */
   var st = window.__authState || {};
   if (!st.user || st.role !== 'organizer') return;
   closeProfile();
-  if (typeof window.openAdmin === 'function') window.openAdmin();
+
+  /* Open admin overlay directly (bypass role check — organizer is allowed to edit own confs) */
+  var ov = document.getElementById('admin-overlay');
+  if (ov) { ov.classList.add('open'); document.body.style.overflow = 'hidden'; }
+
+  /* Set up minimal tabs for organizer editing context */
+  var tabsBar = document.getElementById('admin-tabs-bar');
+  if (tabsBar) tabsBar.style.display = 'none';
+  document.getElementById('admin-title').textContent = 'Edit Conference';
+  document.getElementById('admin-footer').innerHTML =
+    '<button class="btn-s" onclick="closeAdmin()">Cancel</button>';
+
   setTimeout(function () {
     if (typeof window.editConf === 'function') window.editConf(confId);
-  }, 300);
+  }, 100);
 };
 
 /* ── Co-organizer management ───────────────────────────────────── */

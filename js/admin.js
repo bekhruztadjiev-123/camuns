@@ -14,24 +14,28 @@ var addStep        = 0;
 var addData        = {};
 
 /* ── Open / close ─────────────────────────────────────────────── */
-function openAdmin() {
-  var st   = window.__authState || {};
-  var role = st.role || null;
+/* openAdmin is now primarily handled by auth.js handleNavAuthClick().
+   This fallback only fires if auth.js didn't define it (shouldn't happen). */
+if (typeof window.openAdmin !== 'function' || !window.__authState) {
+  window.openAdmin = function () {
+    var st   = window.__authState || {};
+    var role = st.role || null;
 
-  if (role === 'admin') {
-    /* Already authenticated as admin */
-    document.getElementById('admin-overlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
-    showAdminPanel();
-    return;
-  }
+    if (role === 'admin') {
+      document.getElementById('admin-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      showAdminPanel();
+      return;
+    }
 
-  /* Not logged in or not admin — hand off to auth.js login flow.
-     After OTP/OAuth login, __setSession detects role=admin and calls
-     showAdminPanel() automatically. No credentials live in JS. */
-  if (typeof window.openAuth === 'function') {
-    window.openAuth('delegate'); /* default role picker; DB determines actual role */
-  }
+    if (role === 'organizer' && st.approved) {
+      if (typeof window.openProfile === 'function') { window.openProfile(); return; }
+    }
+
+    if (typeof window.openAuth === 'function') {
+      window.openAuth('delegate');
+    }
+  };
 }
 
 function closeAdmin() {
