@@ -51,6 +51,7 @@ var __authStep        = 'role';
 var __authTargetRole  = 'delegate';
 var __authEmailInput  = '';
 var __authOverlayOpen = false;
+var __lastSessionId   = null; /* dedup guard for __setSession */
 
 /* ── Overlay open/close ────────────────────────────────────── */
 function __setOverlayOpen(open) {
@@ -588,6 +589,11 @@ function __buildInitials(displayName) {
 }
 
 function __setSession(session) {
+  /* ── Dedup guard: skip if same session already being processed ── */
+  var sid = session && session.user ? session.user.id + ':' + (session.access_token || '').slice(-8) : null;
+  if (sid && sid === __lastSessionId) return;
+  __lastSessionId = sid;
+
   window.__authState.status   = 'loading';
   window.__authState.session  = session;
   window.__authState.user     = session ? session.user : null;
@@ -602,6 +608,7 @@ function __setSession(session) {
   __updateNavBtn(null);
 
   if (!session || !session.user) {
+    __lastSessionId = null;
     window.__authState.status = 'ready';
     __emitAuthState();
     __updateNavBtn(window.__authState);
@@ -663,6 +670,10 @@ function __setSession(session) {
       return profile;
     })
     .then(function (profile) {
+      /* Clear role hint only AFTER profile is fully resolved.
+         Previous code cleared it here, but the hint needs to survive
+         across getSession/onAuthStateChange race. Now it's safe
+         because the dedup guard prevents double-processing. */
       __clearRoleHint();
 
       /* Admin upgrade: if logged in via /#admin flow and profile exists
@@ -741,8 +752,11 @@ function __setSession(session) {
         return;
       }
 
-      /* Delegate — close modal */
+      /* Delegate — close modal and open profile */
       __setOverlayOpen(false);
+      if (typeof window.openProfile === 'function') {
+        setTimeout(function () { window.openProfile(); }, 120);
+      }
     })
     .catch(function (err) {
       window.__authState.status = 'error';

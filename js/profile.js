@@ -169,7 +169,13 @@ function __fetchAndRenderProfile(userId, isOwnProfile, role) {
 function __renderProfileOffline(isOwnProfile, role) {
   var st      = window.__authState || {};
   var profile = st.profile || {};
-  __renderDelegateProfile(profile, [], [], [], isOwnProfile);
+  var actualRole = profile.role || role || 'delegate';
+
+  if (actualRole === 'organizer') {
+    __renderOrganizerProfile(profile, [], [], isOwnProfile);
+  } else {
+    __renderDelegateProfile(profile, [], [], [], isOwnProfile);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════

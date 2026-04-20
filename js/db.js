@@ -1,5 +1,5 @@
 /* MUN Central Asia — db.js */
-var CONFS = [];
+if (typeof CONFS === 'undefined') var CONFS = [];
 
 /* ═══════════════════════════════════════════
    LOAD CONFERENCES
