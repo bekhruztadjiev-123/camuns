@@ -99,7 +99,15 @@ function __loadProfile(userId) {
     .select('user_id,role,display_name,initials,color,approved,bio,country,avatar_url')
     .eq('user_id', userId)
     .maybeSingle()
-    .then(function (res) { return res ? res.data || res : null; });
+    .then(function (res) {
+      /* Supabase v2 maybeSingle returns { data: <row|null>, error }.
+         We must return ONLY the row, never the wrapper object —
+         returning the wrapper causes profile.role to be undefined
+         and the organizer profile falls through to the delegate view. */
+      if (!res) return null;
+      if (res.error) { console.warn('[loadProfile] error:', res.error); return null; }
+      return res.data || null;
+    });
 }
 
 /* ── Render helpers ────────────────────────────────────────── */

@@ -115,7 +115,11 @@ function __fetchAndRenderProfile(userId, isOwnProfile, role) {
     .select('user_id,role,display_name,initials,color,approved,bio,country,avatar_url')
     .eq('user_id', userId)
     .maybeSingle()
-    .then(function (r) { return r ? r.data || r : null; });
+    .then(function (r) {
+      if (!r) return null;
+      if (r.error) return null;
+      return r.data || null;
+    });
 
   /* Fetch attendance records */
   var attendancePromise = window.__sbClient
@@ -565,9 +569,15 @@ window.__saveProfileSettings = function () {
     .from('profiles')
     .update(payload)
     .eq('user_id', st.user.id)
+    .select()
     .then(function (res) {
-      if (res && res.error) {
-        /* Supabase client failed — fall back to REST */
+      /* Supabase v2: .update().select() returns { data: [rows], error }.
+         RLS may silently block — data will be null or empty array. */
+      var hasError = res && res.error;
+      var noRows   = !res || !res.data || (Array.isArray(res.data) && res.data.length === 0);
+
+      if (hasError || noRows) {
+        /* Supabase client failed or RLS blocked — fall back to REST */
         return fetch(SUPABASE_URL + '/rest/v1/profiles?user_id=eq.' + st.user.id, {
           method:  'PATCH',
           headers: {
