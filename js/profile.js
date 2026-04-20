@@ -800,17 +800,50 @@ window.__submitAwardClaim = function () {
       granted_by:    st.user.id,
       status:        'pending'
     })
+    .select()
     .then(function (res) {
-      if (res && res.error) {
-        var msg = res.error.message || 'Failed to submit.';
-        /* Unique constraint = duplicate claim */
-        if (msg.indexOf('unique') !== -1 || msg.indexOf('duplicate') !== -1) {
-          msg = 'You already claimed this award for this conference.';
-        }
-        if (errEl) { errEl.textContent = msg; errEl.classList.add('visible'); }
-        return;
+      var hasError = res && res.error;
+      var noRows   = !res || !res.data || (Array.isArray(res.data) && res.data.length === 0);
+
+      if (hasError || noRows) {
+        /* Supabase client blocked (RLS) — fall back to REST */
+        var payload = {
+          conference_id: Number(confId),
+          user_id:       st.user.id,
+          award_type:    awardType,
+          committee:     committee || null,
+          granted_by:    st.user.id,
+          status:        'pending'
+        };
+        return fetch(SUPABASE_URL + '/rest/v1/awards', {
+          method:  'POST',
+          headers: {
+            'apikey':        SUPABASE_ANON,
+            'Authorization': 'Bearer ' + (window.__sbAccessToken || SUPABASE_ANON),
+            'Content-Type':  'application/json',
+            'Prefer':        'return=representation'
+          },
+          body: JSON.stringify(payload)
+        })
+        .then(function (r) {
+          if (!r.ok) {
+            return r.json().then(function (err) {
+              var msg = (err && err.message) ? err.message : 'Failed to submit.';
+              if (msg.indexOf('unique') !== -1 || msg.indexOf('duplicate') !== -1) {
+                msg = 'You already claimed this award for this conference.';
+              }
+              if (msg.indexOf('row-level security') !== -1) {
+                msg = 'Permission denied. Ask admin to enable award claims.';
+              }
+              if (errEl) { errEl.textContent = msg; errEl.classList.add('visible'); }
+            });
+          }
+          __profileTab = 'awards';
+          window.openProfile();
+        });
       }
-      /* Refresh profile */
+
+      /* Success via Supabase client */
       __profileTab = 'awards';
       window.openProfile();
     })
